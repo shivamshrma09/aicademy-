@@ -10,6 +10,10 @@ const connectToDb = require("./db/db");
 const studentRoutes = require("./routes/student.route");
 const batchRoutes = require("./routes/batch.routes");
 const progressRoutes = require("./routes/progress.routes");
+const testSeriesRoutes = require("./routes/testSeries.routes");
+const pdfChatRoutes = require("./routes/pdfChat.routes");
+const resourceRoutes = require("./routes/resource.routes");
+const dashboardRoutes = require("./routes/dashboard.routes");
 const Student = require("./models/student.models");
 const Batch = require("./models/batch.models"); 
 const aiRoutes = require("./routes/ai.routes"); 
@@ -27,14 +31,15 @@ app.use(cors({
     'https://intelli-learn-wie5.vercel.app',
     'https://intelli-learn-omega.vercel.app',
     'https://intelli-learn-mu.vercel.app',
+    'https://intelli-learn-two.vercel.app',
     'https://intellilearn.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 
@@ -52,6 +57,10 @@ app.use("/students", studentRoutes);
 // app.use("/api", studentRoutes);
 app.use("/api/batches", batchRoutes);
 app.use("/api/progress", progressRoutes);
+app.use("/api/test-series", testSeriesRoutes);
+app.use("/api/pdf-chat", pdfChatRoutes);
+app.use("/api/resources", resourceRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 app.use("/ai", aiRoutes); // ✅ [IMPORTANT] Added AI routes
 
 // Error handling middleware

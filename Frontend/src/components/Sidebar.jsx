@@ -9,19 +9,15 @@ import {
   CheckSquare,
   Code,
   Clock,
+  MessageSquare,
 } from "lucide-react";
 import "./Sidebar.css";
+import SyllabusList, { defaultSyllabus } from "./SyllabusList";
 
 const Sidebar = ({ isOpen, activeTab, onTabChange }) => {
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "my-batch", label: "My Batch", icon: BookOpen },
-    {
-      id: "library",
-      label: "Library",
-      icon: FileText,
-      description: "Access learning materials",
-    },
     {
       id: "tests",
       label: "Tests",
@@ -29,23 +25,16 @@ const Sidebar = ({ isOpen, activeTab, onTabChange }) => {
       description: "Practice with quizzes and tests",
     },
     {
-      id: "leetcode",
-      label: "PDF chart",
-      icon: Code,
-      description: "Chart with PDF",
+      id: "pdf-chat",
+      label: "PDF Chat",
+      icon: MessageSquare,
+      description: "Chat with your PDF documents",
     },
     {
       id: "save-resource",
       label: "Save Resource",
       icon: Code,
       description: "Save your resources",
-    },
-
-    {
-      id: "opportunities",
-      label: "Opportunities",
-      icon: Gift,
-      description: "Discover learning opportunities",
     },
     { id: "settings", label: "Settings", icon: Settings },
   ];
@@ -73,6 +62,11 @@ const Sidebar = ({ isOpen, activeTab, onTabChange }) => {
           );
         })}
       </nav>
+      {/* Embedded syllabus / All Classes (compact view) */}
+      <div style={{ padding: '12px', borderTop: '1px solid #e5e7eb' }}>
+        <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#374151' }}>All Classes</h4>
+        <SyllabusList chapters={defaultSyllabus} compact={true} />
+      </div>
     </aside>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Search, BookOpen, FileText, Headphones, Video, Image,
-  Download, Share2, Star, Clock, Eye, Bookmark, Plus, Grid, List,
+  Share2, Star, Clock, Eye, Plus, Grid, List,
 } from 'lucide-react';
 import './Library.css';
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -240,35 +240,44 @@ Return only JSON array, strictly without extra text or comments.
   }, [user, aiRecommendedResources]); // Re-run when user or AI recommendations change
 
   // Helper functions for icons and colors (memoized for performance)
-  const getTypeIcon = useMemo(() => (type) => ({
-    chapter: BookOpen,
-    notes: FileText,
-    audio: Headphones,
-    video: Video,
-    image: Image,
-    document: FileText,
-    tutorial: BookOpen
-  }[type] || BookOpen), []);
+  const getTypeIcon = useMemo(() => (type) => {
+    const icons = {
+      chapter: BookOpen,
+      notes: FileText,
+      audio: Headphones,
+      video: Video,
+      image: Image,
+      document: FileText,
+      tutorial: BookOpen
+    };
+    return icons[type] || BookOpen;
+  }, []);
 
-  const getTypeColor = useMemo(() => (type) => ({
-    chapter: 'text-blue-500',
-    notes: 'text-green-500',
-    audio: 'text-purple-500',
-    video: 'text-red-500',
-    image: 'text-yellow-500',
-    document: 'text-indigo-500',
-    tutorial: 'text-orange-500'
-  }[type] || 'text-gray-500'), []);
+  const getTypeColor = useMemo(() => (type) => {
+    const colors = {
+      chapter: 'text-blue-500',
+      notes: 'text-green-500',
+      audio: 'text-purple-500',
+      video: 'text-red-500',
+      image: 'text-yellow-500',
+      document: 'text-indigo-500',
+      tutorial: 'text-orange-500'
+    };
+    return colors[type] || 'text-gray-500';
+  }, []);
 
-  const getTagBgColor = useMemo(() => (type) => ({
-    chapter: 'bg-blue-500',
-    notes: 'bg-green-500',
-    audio: 'bg-purple-500',
-    video: 'bg-red-500',
-    image: 'bg-yellow-500',
-    document: 'bg-indigo-500',
-    tutorial: 'bg-orange-500'
-  }[type] || 'bg-gray-500'), []);
+  const getTagBgColor = useMemo(() => (type) => {
+    const colors = {
+      chapter: 'bg-blue-500',
+      notes: 'bg-green-500',
+      audio: 'bg-purple-500',
+      video: 'bg-red-500',
+      image: 'bg-yellow-500',
+      document: 'bg-indigo-500',
+      tutorial: 'bg-orange-500'
+    };
+    return colors[type] || 'bg-gray-500';
+  }, []);
 
 
   // Conditional rendering for initial loading and errors

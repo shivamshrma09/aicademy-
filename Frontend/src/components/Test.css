@@ -320,10 +320,9 @@ body {
     background-color: #ffffff;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    padding: 35px; /* Increased padding */
+    padding: 35px;
     margin-top: 40px;
-    text-align: center;
-    position: relative; /* For back button positioning */
+    position: relative;
 }
 
 .test-selection-interface .back-button {
@@ -339,48 +338,147 @@ body {
     align-items: center;
     gap: 5px;
     transition: color 0.3s ease;
-    padding: 8px 12px; /* Add some padding for better click area */
+    padding: 8px 12px;
     border-radius: 6px;
 }
 
 .test-selection-interface .back-button:hover {
     color: #0056b3;
-    background-color: #f0f8ff; /* Light hover background */
+    background-color: #f0f8ff;
 }
 
-.test-selection-interface .section-heading {
-    margin-top: 0; /* Adjust spacing as back button is absolute */
-    padding-top: 20px; /* Push heading down a bit */
+.test-series-header {
+    text-align: center;
+    padding: 30px 20px;
+    margin-bottom: 40px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.test-series-title {
+    font-size: 2.2em;
+    color: #2c3e50;
+    margin: 0 0 15px 0;
+    font-weight: 700;
+}
+
+.test-series-description {
+    font-size: 1.1em;
+    color: #666;
+    margin: 0 0 20px 0;
+    line-height: 1.6;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.test-series-meta {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    font-size: 0.95em;
+    color: #555;
+}
+
+.test-series-meta span {
+    padding: 8px 16px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+}
+
+.choose-test-heading {
+    font-size: 1.6em;
+    color: #2c3e50;
+    margin: 0 0 25px 0;
+    font-weight: 600;
+}
+
+.test-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.test-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.test-item:hover {
+    background-color: #e9ecef;
+    border-color: #007bff;
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+
+.test-item-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.test-item-title {
+    font-size: 1.15em;
+    color: #2c3e50;
+    margin: 0;
+    font-weight: 600;
+}
+
+.test-item-questions {
+    font-size: 0.95em;
+    color: #6c757d;
+}
+
+.test-start-btn {
+    background-color: #174C7C;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.test-start-btn:hover {
+    background-color: #0056b3;
 }
 
 .test-level-buttons {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 18px; /* Slightly more gap */
-    margin-top: 35px; /* More margin */
+    gap: 18px;
+    margin-top: 35px;
 }
 
 .test-level-btn {
-    background-color: #e9ecef; /* Light grey for test buttons */
+    background-color: #e9ecef;
     color: #34495e;
-    padding: 18px 28px; /* Increased padding for larger clickable area */
+    padding: 18px 28px;
     border: 1px solid #ced4da;
-    border-radius: 10px; /* Slightly larger border-radius */
-    font-size: 1.15em; /* Slightly larger font */
+    border-radius: 10px;
+    font-size: 1.15em;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-    min-width: 250px; /* Ensure a decent minimum width */
+    min-width: 250px;
     text-align: center;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08); /* Stronger shadow */
-    display: flex; /* To center content if needed */
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+    display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 500;
 }
 
 .test-level-btn:hover {
-    background-color: #cfe2ff; /* Lighter blue on hover */
+    background-color: #cfe2ff;
     border-color: #007bff;
     transform: translateY(-3px);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
@@ -663,8 +761,42 @@ body {
     }
 
     .test-selection-interface .back-button {
-        position: static; /* Make it flow with content */
+        position: static;
         margin-bottom: 20px;
+    }
+
+    .test-series-header {
+        padding: 20px 10px;
+    }
+
+    .test-series-title {
+        font-size: 1.8em;
+    }
+
+    .test-series-meta {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .test-list {
+        gap: 12px;
+    }
+
+    .test-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+        padding: 18px 20px;
+    }
+
+    .test-item-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .test-start-btn {
+        width: 100%;
     }
 
     .test-interface-card {

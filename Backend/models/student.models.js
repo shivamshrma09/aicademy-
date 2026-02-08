@@ -23,16 +23,16 @@ const BatchProgressSchema = new mongoose.Schema({
 
 
 const CertificateSchema = new mongoose.Schema({
-  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
-  batchId: { type: String, required: true },
-  batchName: { type: String, required: true },
-  score: { type: Number, required: true },
-  totalQuestions: { type: Number, required: true },
-  correctAnswers: { type: Number, required: true },
-  percentage: { type: Number, required: true },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student' },
+  batchId: { type: String },
+  batchName: { type: String },
+  score: { type: Number },
+  totalQuestions: { type: Number },
+  correctAnswers: { type: Number },
+  percentage: { type: Number },
   issueDate: { type: Date, default: Date.now },
   certificateUrl: { type: String },
-  certificateId: { type: String, required: true, unique: true }
+  certificateId: { type: String, sparse: true }
 });
 
 
@@ -157,8 +157,8 @@ const StudySessionSchema = new mongoose.Schema({
 
 const studentSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  password: { type: String, required: true, select: false },
   course: { type: String, required: true },
   totalPoints: { type: Number, default: 0 },
   rank: { type: Number, default: 0 },
@@ -184,6 +184,19 @@ studentSchema.statics.hashPassword = async function(password) {
   const salt = await bcrypt.genSalt(10);
   return await bcrypt.hash(password, salt);
 };
+
+// Pre-save hook to hash password before saving
+studentSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 studentSchema.methods.generateAuthToken = function () {
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, { expiresIn: "1d" });

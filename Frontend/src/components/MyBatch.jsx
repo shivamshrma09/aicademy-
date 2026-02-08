@@ -9,11 +9,14 @@ import {
 } from "lucide-react";
 import "./MyBatch.css";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import SyllabusList from "./SyllabusList";
+import BatchCard from "./BatchCard";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 // API key directly used in component for Gemini integration
-const GOOGLE_API_KEY = "AIzaSyC5wCrEK1HSLGpnbOZ0vVqsBl83QuR-VJI";
+const GOOGLE_API_KEY = "AIzaSyB2jMnBOrkVevGN8DgKWe0E6CQiY2aBdsI";
 
-const getGeminiModel = (modelName = "gemini-1.5-flash") => {
+const getGeminiModel = (modelName = "gemini-2.5-flash") => {
   const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
   return genAI.getGenerativeModel({ model: modelName });
 };
@@ -22,31 +25,49 @@ const getGeminiModel = (modelName = "gemini-1.5-flash") => {
 const generateFlashcards = async (subject, topic, count = 5) => {
   try {
     const model = getGeminiModel();
-    const prompt = `Generate ${count} educational flashcards for the subject "${subject}" and topic "${topic}". 
-    For each flashcard, provide a title and content in this format: 
-    TITLE: [title], 
-    CONTENT: [content]. 
-    Each flashcard should be separated by ---`;
+    const prompt = `You are an expert educator. Generate ${count} comprehensive educational flashcards for Subject: "${subject}", Topic: "${topic}".
+    
+    For EACH flashcard, provide in this exact format:
+    TITLE: [Clear, concise title]
+    FRONT: [Question/concept - 1-2 sentences]
+    BACK: [Detailed answer with key points, definitions, and examples]
+    KEY_POINTS: [3-4 important bullet points]
+    REAL_WORLD_EXAMPLE: [Practical real-world application or example]
+    IMAGE_SUGGESTION: [Specific image/diagram recommendation that would help understand this concept]
+    DIFFICULTY: [Beginner/Intermediate/Advanced]
+    ---
+    
+    Make flashcards progressive (easier to harder). Use clear, academic language. Include mnemonics or memory aids where helpful.`;
     
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const generatedText = response.text();
     
-    // Parse the generated flashcards
+    // Parse the generated flashcards with enhanced structure
     return generatedText.split('---').map(card => {
       const titleMatch = card.match(/TITLE:\s*(.+)/i);
-      const contentMatch = card.match(/CONTENT:\s*([\s\S]+)/i);
+      const frontMatch = card.match(/FRONT:\s*([\s\S]+?)(?=BACK:|$)/i);
+      const backMatch = card.match(/BACK:\s*([\s\S]+?)(?=KEY_POINTS:|$)/i);
+      const keyPointsMatch = card.match(/KEY_POINTS:\s*([\s\S]+?)(?=REAL_WORLD_EXAMPLE:|$)/i);
+      const exampleMatch = card.match(/REAL_WORLD_EXAMPLE:\s*([\s\S]+?)(?=IMAGE_SUGGESTION:|$)/i);
+      const imageMatch = card.match(/IMAGE_SUGGESTION:\s*(.+)/i);
+      const difficultyMatch = card.match(/DIFFICULTY:\s*(.+)/i);
       
       return {
         id: Math.random().toString(36).substring(2, 9),
         title: titleMatch ? titleMatch[1].trim() : 'Generated Flashcard',
-        content: contentMatch ? contentMatch[1].trim() : card.trim(),
+        front: frontMatch ? frontMatch[1].trim() : '',
+        content: backMatch ? backMatch[1].trim() : card.trim(),
+        keyPoints: keyPointsMatch ? keyPointsMatch[1].trim().split('\n').filter(p => p.trim()) : [],
+        example: exampleMatch ? exampleMatch[1].trim() : '',
+        imageSuggestion: imageMatch ? imageMatch[1].trim() : '',
+        difficulty: difficultyMatch ? difficultyMatch[1].trim() : 'Intermediate',
         subject,
         topic,
         likes: 0,
         generated: true
       };
-    }).filter(card => card.title && card.content);
+    }).filter(card => card.title && (card.content || card.front));
   } catch (error) {
     console.error('Error generating flashcards:', error);
     return [];
@@ -57,36 +78,51 @@ const generateFlashcards = async (subject, topic, count = 5) => {
 const generateTestQuestions = async (subject, topic, count = 5) => {
   try {
     const model = getGeminiModel();
-    const prompt = `Generate ${count} multiple-choice questions for the subject "${subject}" and topic "${topic}". 
-    For each question, provide the question, 4 options, the correct option index (0-3), and a brief explanation.
-    Format each question as:
-    QUESTION: [question text]
-    OPTIONS: [option1], [option2], [option3], [option4]
-    CORRECT: [index]
-    EXPLANATION: [explanation]
-    ---`;
+    const prompt = `You are an expert exam creator. Generate ${count} high-quality multiple-choice assessment questions for Subject: "${subject}", Topic: "${topic}".
+    
+    For EACH question, provide in this exact format:
+    QUESTION: [Clear, unambiguous question - can be single-select or scenario-based]
+    DIFFICULTY: [Beginner/Intermediate/Advanced]
+    OPTIONS: [Option A], [Option B], [Option C], [Option D]
+    CORRECT: [Letter: A/B/C/D]
+    EXPLANATION: [Detailed explanation of why the correct answer is right, and why others are wrong]
+    KEY_CONCEPT: [The core concept this question tests]
+    HINTS: [Study tip or hint to remember this concept]
+    REAL_SCENARIO: [Real-world scenario where this knowledge applies]
+    ---
+    
+    Ensure questions test understanding, not just memorization. Vary difficulty levels. Avoid grammatically suggesting the answer.`;
     
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const generatedText = response.text();
     
-    // Parse the generated questions
+    // Parse the generated questions with comprehensive details
     return generatedText.split('---').map(item => {
-      const questionMatch = item.match(/QUESTION:\s*(.+)/i);
-      const optionsMatch = item.match(/OPTIONS:\s*(.+)/i);
-      const correctMatch = item.match(/CORRECT:\s*(.+)/i);
-      const explanationMatch = item.match(/EXPLANATION:\s*([\s\S]+)/i);
+      const questionMatch = item.match(/QUESTION:\s*([\s\S]+?)(?=DIFFICULTY:|$)/i);
+      const difficultyMatch = item.match(/DIFFICULTY:\s*(.+)/i);
+      const optionsMatch = item.match(/OPTIONS:\s*([\s\S]+?)(?=CORRECT:|$)/i);
+      const correctMatch = item.match(/CORRECT:\s*([A-D])/i);
+      const explanationMatch = item.match(/EXPLANATION:\s*([\s\S]+?)(?=KEY_CONCEPT:|$)/i);
+      const conceptMatch = item.match(/KEY_CONCEPT:\s*(.+)/i);
+      const hintsMatch = item.match(/HINTS:\s*(.+)/i);
+      const scenarioMatch = item.match(/REAL_SCENARIO:\s*([\s\S]+?)(?=---|$)/i);
       
       if (!questionMatch || !optionsMatch || !correctMatch) return null;
       
-      const options = optionsMatch[1].split(',').map(opt => opt.trim());
+      const optionsArray = optionsMatch[1].split(',').map(opt => opt.trim());
+      const correctIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 }[correctMatch[1]] || 0;
       
       return {
         id: Math.random().toString(36).substring(2, 9),
         question: questionMatch[1].trim(),
-        options: options.length >= 4 ? options.slice(0, 4) : ['Option A', 'Option B', 'Option C', 'Option D'],
-        correct: parseInt(correctMatch[1].trim()) || 0,
+        options: optionsArray.length >= 4 ? optionsArray.slice(0, 4) : ['Option A', 'Option B', 'Option C', 'Option D'],
+        correct: correctIndex,
         explanation: explanationMatch ? explanationMatch[1].trim() : 'No explanation provided',
+        difficulty: difficultyMatch ? difficultyMatch[1].trim() : 'Intermediate',
+        keyConcept: conceptMatch ? conceptMatch[1].trim() : '',
+        hints: hintsMatch ? hintsMatch[1].trim() : '',
+        realScenario: scenarioMatch ? scenarioMatch[1].trim() : '',
         subject,
         topic
       };
@@ -101,25 +137,41 @@ const generateTestQuestions = async (subject, topic, count = 5) => {
 const generateResources = async (subject, topic) => {
   try {
     const model = getGeminiModel();
-    const prompt = `Generate a list of 5 learning resources for the subject "${subject}" and topic "${topic}".
-    Include a mix of articles, videos, and interactive resources.
-    For each resource, provide a title, type (article, video, interactive), and a brief description.
-    Format as:
-    TITLE: [title]
-    TYPE: [type]
-    DESCRIPTION: [description]
-    URL: [placeholder_url]
-    ---`;
+    const prompt = `You are a learning resource curator. Generate 5 diverse, valuable learning resources for Subject: "${subject}", Topic: "${topic}".
+    
+    For EACH resource, provide in this exact format:
+    TITLE: [Clear, descriptive title]
+    TYPE: [Article/Video/Interactive Tool/Course/Documentation]
+    PLATFORM: [YouTube/MDN/Coursera/Official Docs/Medium/Dev.to/GitHub/etc]
+    DESCRIPTION: [2-3 sentences explaining what this resource covers and why it's valuable]
+    DIFFICULTY: [Beginner/Intermediate/Advanced/All Levels]
+    DURATION: [Estimated learning time - e.g., '15 minutes', '2 hours']
+    KEY_TOPICS_COVERED: [Main topics this resource explains]
+    WHY_THIS_RESOURCE: [Why this is a must-have resource for learning this topic]
+    OFFICIAL_URL_FORMAT: [Suggest type of resource: Official docs, Blog post, Video tutorial, etc.]
+    PRICE: [Free/Paid]
+    RATING: [★★★★★ - 5/5 stars based on community value]
+    ---
+    
+    Recommend well-known, reputable, and high-quality resources. Mix beginner-friendly with advanced resources.`;
     
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const generatedText = response.text();
     
-    // Parse the generated resources
+    // Parse the generated resources with comprehensive metadata
     return generatedText.split('---').map(item => {
       const titleMatch = item.match(/TITLE:\s*(.+)/i);
       const typeMatch = item.match(/TYPE:\s*(.+)/i);
-      const descriptionMatch = item.match(/DESCRIPTION:\s*([\s\S]+?)(?=URL:|$)/i);
+      const platformMatch = item.match(/PLATFORM:\s*(.+)/i);
+      const descriptionMatch = item.match(/DESCRIPTION:\s*([\s\S]+?)(?=DIFFICULTY:|$)/i);
+      const difficultyMatch = item.match(/DIFFICULTY:\s*(.+)/i);
+      const durationMatch = item.match(/DURATION:\s*(.+)/i);
+      const topicsMatch = item.match(/KEY_TOPICS_COVERED:\s*(.+)/i);
+      const whyMatch = item.match(/WHY_THIS_RESOURCE:\s*([\s\S]+?)(?=OFFICIAL_URL_FORMAT:|$)/i);
+      const urlFormatMatch = item.match(/OFFICIAL_URL_FORMAT:\s*(.+)/i);
+      const priceMatch = item.match(/PRICE:\s*(.+)/i);
+      const ratingMatch = item.match(/RATING:\s*(.+)/i);
       
       if (!titleMatch) return null;
       
@@ -127,7 +179,15 @@ const generateResources = async (subject, topic) => {
         id: Math.random().toString(36).substring(2, 9),
         title: titleMatch[1].trim(),
         type: typeMatch ? typeMatch[1].trim().toLowerCase() : 'article',
+        platform: platformMatch ? platformMatch[1].trim() : 'Online',
         description: descriptionMatch ? descriptionMatch[1].trim() : 'No description provided',
+        difficulty: difficultyMatch ? difficultyMatch[1].trim() : 'All Levels',
+        duration: durationMatch ? durationMatch[1].trim() : 'Variable',
+        keyTopics: topicsMatch ? topicsMatch[1].trim().split(',').map(t => t.trim()) : [],
+        whyMatters: whyMatch ? whyMatch[1].trim() : '',
+        urlFormat: urlFormatMatch ? urlFormatMatch[1].trim() : '',
+        price: priceMatch ? priceMatch[1].trim() : 'Free',
+        rating: ratingMatch ? ratingMatch[1].trim() : '★★★★☆',
         url: '#',
         subject,
         topic
@@ -176,6 +236,17 @@ const MyBatch = ({ initialTab = 'my-batches', currentUser = {} }) => {
   const [importantQuestions, setImportantQuestions] = useState({});
   const [loadingFlashcards, setLoadingFlashcards] = useState(false);
   const [loadingResources, setLoadingResources] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  const [selectedChapterForVideo, setSelectedChapterForVideo] = useState(null);
+  const [selectedChapterIndex, setSelectedChapterIndex] = useState(null);
+  const [showDoubtModal, setShowDoubtModal] = useState(false);
+  const [doubtQuestion, setDoubtQuestion] = useState('');
+  const [doubtMessages, setDoubtMessages] = useState([]);
+  const [doubtLoading, setDoubtLoading] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoRef = React.useRef(null);
   
   // New enhanced features
   const [studyStreak, setStudyStreak] = useState(0);
@@ -414,177 +485,20 @@ const MyBatch = ({ initialTab = 'my-batches', currentUser = {} }) => {
 
   useEffect(() => {
     const fetchBatches = async () => {
-      // Always load batches from local storage first
-      const allStoredBatches = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('batch_')) {
-          const storedData = loadBatchContentFromStorage(key.replace('batch_', ''));
-          if (storedData) allStoredBatches.push(storedData);
-        }
-      }
-      
-      if (allStoredBatches.length > 0) {
-        setBatches(allStoredBatches);
-      } else {
-        try {
-          // Only try API if no local batches found
-          const res = await fetch('/api/batches', {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-          });
-          
-          if (res.ok) {
-            const data = await res.json();
-            setBatches(data);
-          } else {
-            throw new Error("Failed to load batches");
-          }
-        } catch (err) {
-          console.error("Batch fetch error:", err.message);
-          // Use sample data for demo
-          const sampleBatches = [
-          {
-            id: 1,
-            title: "Web Development Fundamentals",
-            subject: "Computer Science",
-            difficulty: "Beginner",
-            language: "English",
-            estimatedTime: "40 hours",
-            instructor: "John Smith",
-            image: "https://images.pexels.com/photos/1181263/pexels-photo-1181263.jpeg?auto=compress&cs=tinysrgb&w=300&h=200",
-            progress: 35,
-            totalChapters: 4,
-            completedChapters: 1,
-            enrolledStudents: 24,
-            type: "standard",
-            aiLearningPlan: {
-              description: "A comprehensive introduction to web development covering HTML, CSS, JavaScript and responsive design principles.",
-              chapters: [
-                {
-                  title: "Introduction to HTML",
-                  topics: [
-                    { title: "Basic HTML Structure", explanation: "Learn about HTML document structure, tags, and elements." },
-                    { title: "HTML Forms", explanation: "Create interactive forms with various input types." }
-                  ]
-                },
-                {
-                  title: "CSS Fundamentals",
-                  topics: [
-                    { title: "CSS Selectors", explanation: "Master different types of CSS selectors and their specificity." },
-                    { title: "Box Model", explanation: "Understand the CSS box model including margin, border, padding and content." }
-                  ]
-                },
-                {
-                  title: "JavaScript Basics",
-                  topics: [
-                    { title: "Variables and Data Types", explanation: "Learn about JavaScript variables, data types and operators." },
-                    { title: "Functions", explanation: "Create and use functions in JavaScript." }
-                  ]
-                },
-                {
-                  title: "Responsive Design",
-                  topics: [
-                    { title: "Media Queries", explanation: "Create responsive layouts using CSS media queries." },
-                    { title: "Flexbox", explanation: "Use flexbox for advanced layout techniques." }
-                  ]
-                }
-              ]
-            },
-            completionStatus: [
-              {
-                completed: true,
-                topics: [{ completed: true }, { completed: true }],
-                testAttempted: true,
-                testScore: 90,
-                assignmentCompleted: true
-              },
-              {
-                completed: false,
-                topics: [{ completed: true }, { completed: false }],
-                testAttempted: false
-              },
-              {
-                completed: false,
-                topics: [{ completed: false }, { completed: false }],
-                testAttempted: false
-              },
-              {
-                completed: false,
-                topics: [{ completed: false }, { completed: false }],
-                testAttempted: false
-              }
-            ]
-          },
-          {
-            id: 2,
-            title: "Machine Learning Basics",
-            subject: "Data Science",
-            difficulty: "Intermediate",
-            language: "English",
-            estimatedTime: "60 hours",
-            instructor: "Sarah Johnson",
-            image: "https://images.pexels.com/photos/2599244/pexels-photo-2599244.jpeg?auto=compress&cs=tinysrgb&w=300&h=200",
-            progress: 15,
-            totalChapters: 3,
-            completedChapters: 0,
-            enrolledStudents: 18,
-            type: "custom",
-            aiLearningPlan: {
-              description: "An introduction to machine learning concepts and techniques.",
-              chapters: [
-                {
-                  title: "Introduction to Machine Learning",
-                  topics: [
-                    { title: "What is Machine Learning?", explanation: "Overview of machine learning concepts and applications." },
-                    { title: "Types of Machine Learning", explanation: "Supervised, unsupervised, and reinforcement learning." }
-                  ]
-                },
-                {
-                  title: "Data Preprocessing",
-                  topics: [
-                    { title: "Data Cleaning", explanation: "Techniques for handling missing data and outliers." },
-                    { title: "Feature Engineering", explanation: "Creating and selecting features for machine learning models." }
-                  ]
-                },
-                {
-                  title: "Supervised Learning Algorithms",
-                  topics: [
-                    { title: "Linear Regression", explanation: "Understanding and implementing linear regression models." },
-                    { title: "Classification Algorithms", explanation: "Decision trees, random forests, and support vector machines." }
-                  ]
-                }
-              ]
-            },
-            completionStatus: [
-              {
-                completed: false,
-                topics: [{ completed: true }, { completed: false }],
-                testAttempted: false
-              },
-              {
-                completed: false,
-                topics: [{ completed: false }, { completed: false }],
-                testAttempted: false
-              },
-              {
-                completed: false,
-                topics: [{ completed: false }, { completed: false }],
-                testAttempted: false
-              }
-            ]
-          }
-        ];
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
         
-          setBatches(sampleBatches);
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/batches`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setBatches(data.batches || []);
         }
-      }
-      
-      // Load saved notes from localStorage
-      const savedNotes = localStorage.getItem('batchNotes');
-      if (savedNotes) {
-        setNotes(JSON.parse(savedNotes));
+      } catch (err) {
+        console.error('Error fetching batches:', err);
       }
     };
     fetchBatches();
@@ -607,125 +521,169 @@ const MyBatch = ({ initialTab = 'my-batches', currentUser = {} }) => {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
-    const prompt = `
-You are an expert engineering educator. Create a highly detailed, accurate, and comprehensive learning plan for:
-Subject: ${newSubject}
-Language: ${newLanguage}
-Difficulty: ${newDifficulty}
-Time: ${newDuration}
-Syllabus/Detail: ${newSyllabusText || newDescription}
-Answer in JSON like:
-{ "batchName": "string", "description": "string", "chapters": [ { "title": "string", "topics": [ { "title": "string", "explanation": "string" } ] } ] }
-Only return strict JSON, no text outside JSON.
-`;
+    
     try {
       const model = getGeminiModel();
-      const result = await model.generateContent(prompt);
-      const rawText = result.response && result.response.text ? await result.response.text() : '';
-      if (!rawText.trim()) throw new Error("Gemini API returned nothing!");
+      const prompt = `Create educational content for ${newSubject} (${newDifficulty} level).
 
+IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no extra text.
+
+Format:
+{
+  "batchName": "Course Title",
+  "description": "Brief overview",
+  "chapters": [
+    {
+      "title": "Chapter Name",
+      "topics": [
+        {
+          "title": "Topic Name",
+          "explanation": "Use proper markdown formatting with headings, code blocks, lists, and emphasis. Include practical examples and explanations.",
+          "imageUrl": "Description",
+          "videoSearchTerm": "Search term"
+        }
+      ]
+    }
+  ]
+}
+
+Rules:
+- Use double quotes for all strings
+- Use \\n for newlines in explanation
+- Use triple backticks for code blocks in markdown
+- Keep explanation detailed with proper markdown
+- Maximum 3 chapters, 2 topics each
+- Include code examples in markdown format
+- Return valid JSON only`;
+      
+      const result = await model.generateContent(prompt);
+      let rawText = await result.response.text();
+      
+      // Clean the response - remove markdown code blocks if present
+      rawText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      
+      const jsonStart = rawText.indexOf("{");
+      const jsonEnd = rawText.lastIndexOf("}") + 1;
+      
+      if (jsonStart === -1 || jsonEnd === 0) {
+        throw new Error('No valid JSON found in response');
+      }
+      
+      let jsonText = rawText.slice(jsonStart, jsonEnd);
+      
+      // Clean up common JSON issues
+      jsonText = jsonText
+        .replace(/\n/g, ' ')  // Remove newlines
+        .replace(/\s+/g, ' ')  // Normalize whitespace
+        .replace(/,\s*}/g, '}')  // Remove trailing commas
+        .replace(/,\s*]/g, ']');  // Remove trailing commas in arrays
+      
       let generatedPlan;
       try {
-        const jsonStart = rawText.indexOf("{");
-        const jsonEnd = rawText.lastIndexOf("}");
-        const jsonText = rawText.slice(jsonStart, jsonEnd + 1);
         generatedPlan = JSON.parse(jsonText);
-      } catch {
-        generatedPlan = {
-          batchName: newTitle || "Untitled",
-          description: "Could not parse Gemini output.",
-          chapters: [],
-          rawText,
-        };
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.error('Problematic JSON:', jsonText.substring(0, 500));
+        throw new Error('Failed to parse AI response as JSON');
       }
-      const chapters = Array.isArray(generatedPlan.chapters) ? generatedPlan.chapters : [];
-      const batchId = Date.now().toString();
       
-      // Basic batch info for database (no detailed content)
-      const batchForDatabase = {
-        id: batchId,
-        title: generatedPlan.batchName || newTitle || "Untitled",
-        subject: newSubject,
-        difficulty: newDifficulty,
-        language: newLanguage,
-        estimatedTime: newDuration ? `${newDuration} hours` : "",
-        instructor: newInstructor,
-        image: newImage ||
-          "https://images.pexels.com/photos/159832/science-formula-physics-school-159832.jpeg?auto=compress&cs=tinysrgb&w=300&h=200",
-        progress: 0,
-        totalChapters: chapters.length,
-        completedChapters: 0,
-        enrolledStudents: 1,
-        type: "custom",
-        description: generatedPlan.description
-      };
+      // Ensure basic structure
+      if (!generatedPlan.chapters || !Array.isArray(generatedPlan.chapters)) {
+        generatedPlan.chapters = [];
+      }
       
-      // Full batch data for local storage
-      const batchForStorage = {
-        id: batchId,
-        title: generatedPlan.batchName || newTitle || "Untitled",
-        aiLearningPlan: {
-          batchName: generatedPlan.batchName,
-          description: generatedPlan.description,
-          chapters,
+      // Fix importantLinks and ensure all required fields
+      generatedPlan.chapters = generatedPlan.chapters.map(chapter => {
+        if (!chapter.topics || !Array.isArray(chapter.topics)) {
+          chapter.topics = [];
         }
-      };
-      
-      // Completion status for database
-      const completionStatus = chapters.map(ch => ({
-        completed: false,
-        topics: Array.isArray(ch.topics) ? ch.topics.map(() => ({ completed: false })) : [],
-        testAttempted: false,
-      }));
-      
-      const newBatch = batchForStorage;
-
-
-
-      
-      // Save to student's batches array in database
-      try {
-        const studentResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/students/add-batch`, {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            id: batchId,
-            title: generatedPlan.batchName || newTitle || "Untitled",
-            description: generatedPlan.description,
-            chapters: chapters.map(ch => ({ title: ch.title }))
-          })
+        
+        chapter.topics = chapter.topics.map(topic => {
+          // Ensure importantLinks is an array
+          if (!topic.importantLinks) {
+            topic.importantLinks = [];
+          } else if (typeof topic.importantLinks === 'string') {
+            try {
+              // Try to parse if it's a JSON string
+              const parsed = JSON.parse(topic.importantLinks);
+              topic.importantLinks = Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+              // If parsing fails, set empty array
+              console.warn('Failed to parse importantLinks:', topic.importantLinks);
+              topic.importantLinks = [];
+            }
+          } else if (!Array.isArray(topic.importantLinks)) {
+            // If it's an object or something else, wrap in array or set empty
+            topic.importantLinks = [];
+          }
+          
+          // Validate each link in the array
+          if (Array.isArray(topic.importantLinks)) {
+            topic.importantLinks = topic.importantLinks.filter(link => 
+              link && typeof link === 'object' && link.title && link.url
+            );
+          }
+          
+          // Set defaults for missing fields
+          topic.explanation = topic.explanation || 'Content coming soon';
+          topic.imageUrl = topic.imageUrl || 'Placeholder';
+          topic.videoSearchTerm = topic.videoSearchTerm || topic.title;
+          
+          return topic;
         });
         
-        if (studentResponse.ok) {
-          const result = await studentResponse.json();
-          console.log('Batch saved to student database:', result.message);
-        } else {
-          const errorData = await studentResponse.json();
-          console.error('Failed to save batch to student database:', errorData.message);
-          // Continue with local storage even if database save fails
-        }
-      } catch (studentErr) {
-        console.error('Error saving to student database:', studentErr.message);
-        // Continue with local storage even if database save fails
-      }
+        return chapter;
+      });
       
-
-
-
-
-      // Save complete batch data to local storage
-      localStorage.setItem(`batch_${batchId}`, JSON.stringify(batchForStorage));
+      console.log('Processed chapters:', JSON.stringify(generatedPlan.chapters, null, 2));
       
-      setBatches(prev => [batchForStorage, ...prev]);
+      const batchId = Date.now().toString();
+      const chapters = generatedPlan.chapters || [];
+      
+      const completionStatus = chapters.map(() => ({
+        completed: false,
+        topics: [],
+        testAttempted: false
+      }));
+      
+      // Save full data to backend
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/batches`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          id: batchId,
+          title: generatedPlan.batchName || newTitle,
+          subject: newSubject,
+          difficulty: newDifficulty,
+          language: newLanguage,
+          estimatedTime: newDuration ? `${newDuration} hours` : '',
+          instructor: newInstructor,
+          image: newImage || 'https://images.pexels.com/photos/159832/science-formula-physics-school-159832.jpeg?auto=compress&cs=tinysrgb&w=300&h=200',
+          description: generatedPlan.description,
+          totalChapters: chapters.length,
+          type: 'custom',
+          aiLearningPlan: {
+            batchName: generatedPlan.batchName,
+            description: generatedPlan.description,
+            chapters
+          },
+          completionStatus
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to save batch');
+      
+      const { batch } = await response.json();
+      setBatches(prev => [batch, ...prev]);
       
       resetForm();
       setShowBatchCreation(false);
     } catch (err) {
-      console.error("Batch creation error:", err);
-      alert("Error creating batch: " + (err.message || 'Unknown error occurred'));
+      console.error('Batch creation error:', err);
+      alert('Error creating batch: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -751,36 +709,13 @@ Only return strict JSON, no text outside JSON.
   };
 
   const handleImageError = (e) => {
-    e.target.src =
-      "https://images.pexels.com/photos/159832/science-formula-physics-school-159832.jpeg?auto=compress&cs=tinysrgb&w=300&h=200";
+    e.target.src = 'https://ik.imagekit.io/qwzhnpeqg/7c3d9081-eca6-4f7c-a313-4c20862c737b.png';
   };
   
   // Handle batch card click to show details
   const handleBatchClick = (batch) => {
     setSelectedBatch(batch);
     setShowBatchDetails(true);
-    
-    // Load batch content from local storage
-    const storedContent = loadBatchContentFromStorage(batch.id);
-    if (storedContent && storedContent.aiLearningPlan) {
-      // Update batch with stored content
-      setSelectedBatch({
-        ...batch,
-        aiLearningPlan: storedContent.aiLearningPlan
-      });
-    }
-    
-    // Load resources and flashcards from local storage
-    loadResourcesFromStorage(batch.id);
-    loadFlashcardsFromStorage(batch.id);
-    
-    // Load any saved notes for this batch
-    const noteKey = `${batch.id}-${0}`; // Default to first chapter
-    if (notes[noteKey]) {
-      setCurrentNote(notes[noteKey]);
-    } else {
-      setCurrentNote("");
-    }
   };
   
   // Generate detailed topic explanations
@@ -796,33 +731,36 @@ Only return strict JSON, no text outside JSON.
     
     try {
       const prompt = `
-Explain the following topic in great detail for a beginner to understand:
+You are a master educator specializing in deep, comprehensive topic explanations. Provide an EXTENSIVE, DETAILED explanation suitable for intermediate learners.
+
 Topic: ${topic.title}
-Basic explanation: ${topic.explanation}
-Chapter context: ${chapter.title}
+Context: ${chapter.title}
+Basic Understanding: ${topic.explanation}
 
-Provide a comprehensive explanation that includes:
-1. Simple introduction to the concept
-2. Detailed explanation with examples
-3. Visual representations described in text (diagrams, flowcharts)
-4. Step-by-step breakdown if applicable
-5. Common misconceptions
-6. Practical applications
+Create a comprehensive learning resource with:
+1. CONCEPT OVERVIEW - Definition, principles, historical context, and relevance
+2. DETAILED EXPLANATION - Step-by-step breakdown, key principles, formulas/specs
+3. VISUAL AIDS - ASCII diagrams, flowcharts, detailed visual descriptions
+4. PRACTICAL EXAMPLES - 3-4 real-world examples with detailed explanations
+5. CODE EXAMPLES - Working code in popular languages with explanations
+6. COMMON MISTAKES - Frequent misunderstandings and how to correct them
+7. IMPORTANT RESOURCES - YouTube channels, docs, books, communities, practice platforms
+8. PRACTICE EXERCISES - 3-4 progressive difficulty exercises with hints
 
-If this is a programming topic, include code examples.
-If this is an engineering topic, include relevant formulas or circuit diagrams described in text.
-If this is a scientific topic, include relevant processes or experiments.
-
-Return the explanation in JSON format like this:
+Return ONLY valid JSON, no markdown or text outside:
 {
-  "detailedExplanation": "Full detailed explanation here...",
-  "examples": ["Example 1", "Example 2"],
-  "codeSnippets": ["Code snippet 1 (if applicable)", "Code snippet 2 (if applicable)"],
-  "diagrams": ["Text description of diagram 1 (if applicable)", "Text description of diagram 2 (if applicable)"],
-  "commonMisconceptions": ["Misconception 1", "Misconception 2"],
-  "practicalApplications": ["Application 1", "Application 2"]
+  "definition": "Precise definition",
+  "overview": "Why it matters and history",
+  "detailedExplanation": "Comprehensive explanation",
+  "theory": "Mathematical/technical theory if applicable",
+  "visualAids": [{"type": "Diagram type", "description": "ASCII/text description"}],
+  "practicalExamples": [{"title": "Example", "description": "Detailed", "industryUse": "Real world use"}],
+  "codeExamples": [{"language": "Language", "code": "Working code", "explanation": "How it works"}],
+  "commonMisconceptions": [{"misconception": "What people think", "reality": "What's true", "why": "Why confusion"}],
+  "importantLinks": {"youtubeChannels": [], "officialDocs": [], "books": [], "communities": [], "practicePlatforms": []},
+  "practiceExercises": [{"difficulty": "Level", "question": "Problem", "hint": "Hint", "approach": "Solution"}],
+  "keyTakeaways": ["Point 1", "Point 2", "Point 3"]
 }
-Only return valid JSON, no other text.
 `;
 
       const model = getGeminiModel();
@@ -1025,77 +963,49 @@ Only return valid JSON, no other text.
     const chapter = selectedBatch.aiLearningPlan.chapters[chapterIndex];
     
     try {
-      const prompt = `
-Create 10 multiple-choice questions for a test on the following chapter:
-Chapter Title: ${chapter.title}
+      const prompt = `Create 5 questions (3 MCQ + 2 text-based) for testing knowledge on:
+Chapter: ${chapter.title}
 Topics: ${chapter.topics.map(t => t.title).join(", ")}
-Content: ${chapter.topics.map(t => t.explanation).join(" ")}
 
-Make sure the questions cover all important concepts in the chapter and vary in difficulty.
-Include detailed explanations for each answer that explain why the correct answer is right and why the other options are wrong.
-
-Return the questions in JSON format like this:
+Return ONLY valid JSON array:
 [
   {
-    "question": "Question text here?",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "type": "mcq",
+    "question": "Question text?",
+    "options": ["A", "B", "C", "D"],
     "correctAnswer": 0,
-    "explanation": "Explanation of the correct answer",
-    "difficulty": "easy|medium|hard",
-    "conceptTested": "The main concept being tested"
+    "explanation": "Why this is correct"
+  },
+  {
+    "type": "text",
+    "question": "Question text?",
+    "correctAnswer": "Expected answer",
+    "explanation": "Explanation"
   }
 ]
-where correctAnswer is the index of the correct option (0-based).
-Only return valid JSON, no other text.
-`;
+No markdown, no extra text.`;
 
       const model = getGeminiModel();
       const result = await model.generateContent(prompt);
       const rawText = result.response?.text ? await result.response.text() : '';
       
-      if (!rawText.trim()) throw new Error("Failed to generate test questions");
+      if (!rawText.trim()) throw new Error("Failed to generate test");
       
-      try {
-        const jsonStart = rawText.indexOf("[");
-        const jsonEnd = rawText.lastIndexOf("]") + 1;
-        const jsonText = rawText.slice(jsonStart, jsonEnd);
-        const questions = JSON.parse(jsonText);
-        
-        setTestQuestions(questions);
-        setTestAnswers({});
-      } catch (err) {
-        console.error("Error parsing test questions:", err);
-        // Fallback to default questions
-        setTestQuestions([
-          {
-            question: `What is the main focus of ${chapter.title}?`,
-            options: ["Understanding core concepts", "Advanced techniques", "Historical background", "Future trends"],
-            correctAnswer: 0,
-            explanation: "The chapter primarily focuses on understanding the core concepts."
-          },
-          {
-            question: `Which of the following is covered in this chapter?`,
-            options: [chapter.topics[0]?.title || "Topic 1", "Unrelated topic", "Advanced concept not covered", "None of the above"],
-            correctAnswer: 0,
-            explanation: `${chapter.topics[0]?.title || "Topic 1"} is explicitly covered in this chapter.`
-          }
-        ]);
-      }
+      const jsonStart = rawText.indexOf("[");
+      const jsonEnd = rawText.lastIndexOf("]") + 1;
+      const jsonText = rawText.slice(jsonStart, jsonEnd);
+      const questions = JSON.parse(jsonText);
+      
+      setTestQuestions(questions);
+      setTestAnswers({});
     } catch (err) {
-      console.error("Error generating test questions:", err);
-      // Set default questions
+      console.error("Error generating test:", err);
       setTestQuestions([
         {
-          question: `What is the main focus of ${chapter.title}?`,
-          options: ["Understanding core concepts", "Advanced techniques", "Historical background", "Future trends"],
+          question: `What is ${chapter.title} about?`,
+          options: ["Core concepts", "Advanced topics", "History", "Future"],
           correctAnswer: 0,
-          explanation: "The chapter primarily focuses on understanding the core concepts."
-        },
-        {
-          question: `Which of the following is covered in this chapter?`,
-          options: [chapter.topics[0]?.title || "Topic 1", "Unrelated topic", "Advanced concept not covered", "None of the above"],
-          correctAnswer: 0,
-          explanation: `${chapter.topics[0]?.title || "Topic 1"} is explicitly covered in this chapter.`
+          explanation: "Focuses on core concepts"
         }
       ]);
     } finally {
@@ -1148,8 +1058,14 @@ Provide the assignment in a concise paragraph format.
     
     let correctCount = 0;
     testQuestions.forEach((q, index) => {
-      if (testAnswers[index] === q.correctAnswer) {
-        correctCount++;
+      if (q.type === 'mcq') {
+        if (testAnswers[index] === q.correctAnswer) correctCount++;
+      } else {
+        const userAnswer = (testAnswers[index] || '').toLowerCase().trim();
+        const correctAnswer = (q.correctAnswer || '').toLowerCase().trim();
+        if (userAnswer.includes(correctAnswer) || correctAnswer.includes(userAnswer)) {
+          correctCount++;
+        }
       }
     });
     
@@ -1235,7 +1151,7 @@ Provide the assignment in a concise paragraph format.
   };
   
   // Function to handle test completion
-  const handleTestCompletion = (chapterIndex, score) => {
+  const handleTestCompletion = async (chapterIndex, score) => {
     if (!selectedBatch) return;
     
     // Analyze test results
@@ -1246,7 +1162,8 @@ Provide the assignment in a concise paragraph format.
       incorrectAnswers: [],
       conceptsToReview: [],
       difficultyBreakdown: { easy: 0, medium: 0, hard: 0 },
-      answeredQuestions: []
+      answeredQuestions: [],
+      completedAt: new Date().toISOString()
     };
     
     testQuestions.forEach((question, index) => {
@@ -1258,34 +1175,58 @@ Provide the assignment in a concise paragraph format.
       } else {
         results.incorrectAnswers.push({
           question: question.question,
-          userAnswer: question.options[userAnswer],
-          correctAnswer: question.options[question.correctAnswer],
-          explanation: question.explanation,
+          userAnswer: question.options && question.options[userAnswer] ? question.options[userAnswer] : userAnswer,
+          correctAnswer: question.options && question.options[question.correctAnswer] ? question.options[question.correctAnswer] : question.correctAnswer,
+          explanation: question.explanation || 'No explanation provided',
           conceptTested: question.conceptTested || 'General concept'
         });
         
-        // Add concept to review if not already included
         const concept = question.conceptTested || 'General concept';
         if (!results.conceptsToReview.includes(concept)) {
           results.conceptsToReview.push(concept);
         }
       }
       
-      // Track difficulty breakdown
       if (question.difficulty) {
         results.difficultyBreakdown[question.difficulty]++;
       }
       
       results.answeredQuestions.push({
         question: question.question,
-        userAnswer: userAnswer !== undefined ? question.options[userAnswer] : 'Not answered',
-        correctAnswer: question.options[question.correctAnswer],
+        userAnswer: userAnswer !== undefined ? (question.options && question.options[userAnswer] ? question.options[userAnswer] : userAnswer) : 'Not answered',
+        correctAnswer: question.options && question.options[question.correctAnswer] ? question.options[question.correctAnswer] : question.correctAnswer,
         isCorrect,
-        explanation: question.explanation
+        explanation: question.explanation || 'No explanation provided'
       });
     });
     
     setTestResults(results);
+    
+    // Save to backend and send email
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/batches/${selectedBatch.id}/test-results`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          chapterIndex,
+          chapterTitle: selectedBatch.aiLearningPlan.chapters[chapterIndex].title,
+          batchTitle: selectedBatch.title,
+          testResults: results
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.emailSent) {
+          console.log('Test report sent to email');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving test results:', error);
+    }
     
     // Generate adaptive chapter if score is below 70%
     if (score < 70 && results.conceptsToReview.length > 0) {
@@ -1302,12 +1243,10 @@ Provide the assignment in a concise paragraph format.
         updatedCompletionStatus[chapterIndex].testScore = score;
         updatedCompletionStatus[chapterIndex].testResults = results;
         
-        // Save complete batch data to local storage
-        const updatedBatch = {
+        localStorage.setItem(`batch_${batch.id}`, JSON.stringify({
           ...batch,
           completionStatus: updatedCompletionStatus
-        };
-        localStorage.setItem(`batch_${batch.id}`, JSON.stringify(updatedBatch));
+        }));
         
         return {
           ...batch,
@@ -1519,44 +1458,98 @@ Only return valid JSON, no other text.
     }
   };
 
+  const handleAskDoubt = async () => {
+    if (!doubtQuestion.trim()) return;
+    
+    const userMessage = { role: 'user', content: doubtQuestion };
+    setDoubtMessages(prev => [...prev, userMessage]);
+    setDoubtQuestion('');
+    setDoubtLoading(true);
+    
+    try {
+      const contextContent = selectedTopic 
+        ? `Topic: ${selectedTopic.title}\n${selectedTopic.explanation}`
+        : selectedChapterForVideo.topics?.map(t => `${t.title}: ${t.explanation}`).join('\n\n');
+      
+      const prompt = `You are a helpful tutor. Based on this learning content:\n\n${contextContent}\n\nStudent's question: ${doubtQuestion}\n\nProvide a clear, detailed answer.`;
+      
+      const model = getGeminiModel();
+      const result = await model.generateContent(prompt);
+      const response = await result.response.text();
+      
+      const aiMessage = { role: 'assistant', content: response };
+      setDoubtMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error getting answer:', error);
+      const errorMessage = { role: 'assistant', content: 'Sorry, I could not process your question. Please try again.' };
+      setDoubtMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setDoubtLoading(false);
+    }
+  };
+
+  const handleVideoClick = () => {
+    if (!isVideoPlaying && videoRef.current) {
+      videoRef.current.play();
+      setIsVideoPlaying(true);
+      
+      const textToSpeak = selectedTopic 
+        ? selectedTopic.explanation 
+        : selectedChapterForVideo.topics?.map(t => `${t.title}. ${t.explanation}`).join('. ');
+      
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      
+      utterance.onend = () => {
+        if (videoRef.current) {
+          videoRef.current.pause();
+          setIsVideoPlaying(false);
+        }
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    } else {
+      window.speechSynthesis.cancel();
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+      setIsVideoPlaying(false);
+    }
+  };
+
   return (
     <div className="mybatch-root">
       {/* Batch Creation Modal */}
       {showBatchCreation && (
         <div className="pw-modal-overlay">
-          <div className="pw-modal-content">
-            <h2>Create a New Batch</h2>
-            <form onSubmit={handleBatchFormSubmit} className="pw-batch-form">
-              <div className="pw-form-group">
-                <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Batch Title *" required />
-              </div>
-              <div className="pw-form-row">
-                <input value={newSubject} onChange={e => setNewSubject(e.target.value)} placeholder="Subject *" required />
-                <select value={newDifficulty} onChange={e => setNewDifficulty(e.target.value)}>
+          <div className="pw-modal-content" style={{ maxWidth: '500px', padding: '20px' }}>
+            <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Create New Batch</h2>
+            <form onSubmit={handleBatchFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Batch Title *" required style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }} />
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input value={newSubject} onChange={e => setNewSubject(e.target.value)} placeholder="Subject *" required style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }} />
+                <select value={newDifficulty} onChange={e => setNewDifficulty(e.target.value)} style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}>
                   <option>Beginner</option>
                   <option>Intermediate</option>
                   <option>Advanced</option>
                 </select>
               </div>
-              <div className="pw-form-row">
-                <input value={newLanguage} onChange={e => setNewLanguage(e.target.value)} placeholder="Language *" required />
-                <input value={newDuration} onChange={e => setNewDuration(e.target.value)} type="number" min="1" placeholder="Duration (hrs)" />
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input value={newLanguage} onChange={e => setNewLanguage(e.target.value)} placeholder="Language" style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }} />
+                <input value={newDuration} onChange={e => setNewDuration(e.target.value)} type="number" min="1" placeholder="Duration (hrs)" style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }} />
               </div>
-              <div className="pw-form-group">
-                <input value={newInstructor} onChange={e => setNewInstructor(e.target.value)} placeholder="Instructor Name" />
-              </div>
-              <div className="pw-form-group">
-                <textarea value={newDescription} onChange={e => setNewDescription(e.target.value)} placeholder="Description (optional)"></textarea>
-              </div>
-              <div className="pw-form-group">
-                <textarea value={newSyllabusText} onChange={e => setNewSyllabusText(e.target.value)} placeholder="Enter syllabus topics"></textarea>
-              </div>
-              <div className="pw-form-group">
-                <input value={newImage} onChange={e => setNewImage(e.target.value)} placeholder="Image URL (optional)" />
-              </div>
-              <div className="pw-form-actions">
-                <button type="button" onClick={() => setShowBatchCreation(false)} disabled={loading} className="pw-btn">Cancel</button>
-                <button type="submit" disabled={loading} className="pw-btn pw-btn-primary">{loading ? "Creating..." : "Create Batch"}</button>
+              
+              <textarea value={newDescription} onChange={e => setNewDescription(e.target.value)} placeholder="Description" rows={3} style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', resize: 'vertical' }}></textarea>
+              
+              <textarea value={newSyllabusText} onChange={e => setNewSyllabusText(e.target.value)} placeholder="Syllabus topics" rows={4} style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', resize: 'vertical' }}></textarea>
+              
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button type="button" onClick={() => setShowBatchCreation(false)} disabled={loading} style={{ flex: 1, padding: '10px', background: '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={loading} style={{ flex: 1, padding: '10px', background: '#174C7C', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>{loading ? "Creating..." : "Create Batch"}</button>
               </div>
             </form>
           </div>
@@ -1564,527 +1557,240 @@ Only return valid JSON, no other text.
       )}
 
       {/* Enhanced Header */}
-      <div className="mybatch-header">
-        <div>
-          <h1 className="mybatch-title">Learning Batches</h1>
-          <p className="mybatch-subtitle">Manage your learning journey</p>
-          <div className="mybatch-stats">
-            <span className="mybatch-stat">🔥 {studyStreak} day streak</span>
-            <span className="mybatch-stat">⏱️ {Math.floor(studyTime/60)}h studied</span>
-            <span className="mybatch-stat">🎯 {weeklyGoal} weekly goal</span>
+      {!showBatchDetails && (
+        <>
+          <div className="mybatch-header">
+            <div>
+              <h1 className="mybatch-title">Learning Batches</h1>
+              <p className="mybatch-subtitle">Manage your learning journey</p>
+            </div>
+            <div className="mybatch-header-actions">
+              <button onClick={() => setShowBatchCreation(true)} className="mybatch-btn mybatch-btn-create">
+                <Zap size={18} /> Create AI Batch
+              </button>
+            </div>
           </div>
-        </div>
-        <div className="mybatch-header-actions">
-          <button onClick={() => setShowAnalytics(true)} className="mybatch-btn mybatch-btn-analytics">
-            <BarChart2 size={18} /> Analytics
-          </button>
-          <button onClick={() => setShowLeaderboard(true)} className="mybatch-btn mybatch-btn-leaderboard">
-            <Trophy size={18} /> Leaderboard
-          </button>
-          <button onClick={() => setShowBatchCreation(true)} className="mybatch-btn mybatch-btn-create">
-            <Zap size={18} /> Create AI Batch
-          </button>
-        </div>
-      </div>
-      
-      {/* Search and Filter */}
-      <div className="mybatch-searchfilter">
-        <div className="mybatch-searchbox">
-          <Search className="mybatch-searchicon" size={18} />
-          <input 
-            className="mybatch-input" 
-            value={searchTerm} 
-            onChange={e => setSearchTerm(e.target.value)} 
-            placeholder="Search batches..." 
-          />
-        </div>
-        <div className="mybatch-filterbox">
-          <select 
-            className="mybatch-select" 
-            value={filterType} 
-            onChange={e => setFilterType(e.target.value)}
-          >
-            <option value="all">All Batches</option>
-            <option value="active">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="custom">Custom AI Batches</option>
-          </select>
-        </div>
-      </div>
+          
+          {/* Search and Filter */}
+          <div className="mybatch-searchfilter" style={{ marginBottom: '16px' }}>
+            <div className="mybatch-searchbox" style={{ flex: '0 0 250px' }}>
+              <Search className="mybatch-searchicon" size={16} />
+              <input 
+                className="mybatch-input" 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                placeholder="Search batches..."
+                style={{ fontSize: '13px', padding: '8px 8px 8px 32px' }}
+              />
+            </div>
+            <div className="mybatch-filterbox" style={{ flex: '0 0 180px' }}>
+              <select 
+                className="mybatch-select" 
+                value={filterType} 
+                onChange={e => setFilterType(e.target.value)}
+                style={{ fontSize: '13px', padding: '8px' }}
+              >
+                <option value="all">All Batches</option>
+                <option value="active">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="custom">Custom AI Batches</option>
+              </select>
+            </div>
+          </div>
+        </>
+      )}
       
       {/* Batch List */}
-      <div className="mybatch-list">
+      {!showBatchDetails && (
+        <div className="mybatch-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
         {getCurrentBatches().length > 0 ? (
           getCurrentBatches().map((batch) => (
-            <div key={batch.id} className="mybatch-card" onClick={() => handleBatchClick(batch)}>
-              <div className="mybatch-card-badge">
-                {batch.type === "custom" ? "AI Generated" : "Standard"}
-              </div>
-              <div className="mybatch-card-image-container">
-                <img 
-                  className="mybatch-card-image" 
-                  src={batch.image} 
-                  alt={batch.title} 
-                  onError={handleImageError} 
-                />
-                {batch.progress === 100 && (
-                  <div className="mybatch-card-completed">
-                    <Trophy size={24} />
-                    <span>Completed</span>
-                  </div>
-                )}
-              </div>
-              <div className="mybatch-card-content">
-                <h3 className="mybatch-card-title">{batch.title}</h3>
-                <div className="mybatch-card-instructor">
-                  <GraduationCap size={16} />
-                  <span>{batch.instructor}</span>
-                </div>
-                <p className="mybatch-card-subtitle">{batch.subject}</p>
-                <div className="mybatch-card-meta">
-                  <span><Users size={16} /> {batch.enrolledStudents} Students</span>
-                  <span><BookOpen size={16} /> {batch.totalChapters} Chapters</span>
-                  <span><Clock size={16} /> {batch.estimatedTime}</span>
-                </div>
-                <div className="mybatch-card-stats">
-                  <div className="mybatch-card-stat">
-                    <div className="mybatch-card-stat-label">Difficulty</div>
-                    <div className="mybatch-card-stat-value">{batch.difficulty}</div>
-                  </div>
-                  <div className="mybatch-card-stat">
-                    <div className="mybatch-card-stat-label">Language</div>
-                    <div className="mybatch-card-stat-value">{batch.language}</div>
-                  </div>
-                  <div className="mybatch-card-stat">
-                    <div className="mybatch-card-stat-label">Progress</div>
-                    <div className="mybatch-card-stat-value">{batch.progress}%</div>
-                  </div>
-                </div>
-                <div className="mybatch-progress-container">
-                  <div className="mybatch-progress-bar" style={{ width: `${batch.progress}%` }}></div>
-                </div>
-                <div className="mybatch-card-footer">
-                  <span className="mybatch-progress-text">{batch.completedChapters} of {batch.totalChapters} chapters completed</span>
-                  <div className="mybatch-card-actions">
-                    <button className="mybatch-card-btn">Continue Learning</button>
-                    <button className="mybatch-card-btn-secondary" onClick={(e) => { e.stopPropagation(); alert('Study group feature coming soon!'); }}>
-                      <Users size={14} /> Join Group
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BatchCard
+              key={batch.id}
+              batch={batch}
+              onCardClick={handleBatchClick}
+              onContinueClick={() => handleBatchClick(batch)}
+            />
           ))
         ) : (
           <div className="mybatch-no-batches">No batches found. Create a new batch to get started!</div>
         )}
-      </div>
+        </div>
+      )}
       
       {/* Batch Details View */}
-      {showBatchDetails && selectedBatch && (
-        <div className="mybatch-details">
-          <div className="mybatch-details-header">
+      {showBatchDetails && selectedBatch && !showVideoModal && (
+        <div className="mybatch-details" style={{ position: 'fixed', top: '60px', left: 0, right: 0, bottom: 0, backgroundColor: '#f9fafb', zIndex: 1000, overflowY: 'auto' }}>
+          <div className="mybatch-details-header" style={{ top: 0,  overflow: 'hidden' }}>
             <button 
+            className="mybatch-back-btn"
               onClick={() => { setShowBatchDetails(false); setSelectedBatch(null); }}
-              className="mybatch-btn mybatch-btn-back"
+              style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#6b7280' , marginTop:'15px' }}
             >
-              <ArrowLeft size={18} /> Back
-            </button>
-            <h2>{selectedBatch.title}</h2>
-            
-            {isEligibleForCertificate(selectedBatch) && (
-              <button 
-                onClick={() => setShowCertificateModal(true)}
-                className="mybatch-btn mybatch-btn-certificate"
-              >
-                <Award size={18} /> Get Certificate
-              </button>
-            )}
+              <ArrowLeft size={18} style={{  marginTop:'7px' }} /> Back
+            </button>&nbsp;
+            <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '12px' }}>{selectedBatch.title}</h2>
           </div>
           
-          <div className="mybatch-details-meta">
-            <span><strong>Subject:</strong> {selectedBatch.subject}</span>
-            <span><strong>Instructor:</strong> {selectedBatch.instructor}</span>
-            <span><strong>Difficulty:</strong> {selectedBatch.difficulty}</span>
-            <span><strong>Language:</strong> {selectedBatch.language}</span>
-            <span><strong>Chapters:</strong> {selectedBatch.totalChapters}</span>
-            <span><strong>Estimated Time:</strong> {selectedBatch.estimatedTime}</span>
-            <span><strong>Progress:</strong> {selectedBatch.progress}%</span>
-          </div>
-          
-          <div className="mybatch-details-tabs">
+          <div className="mybatch-details-tabs" style={{  top: '-20px' , display: 'flex', gap: '32px' }}>
             <button 
-              className={`mybatch-tab ${activeDetailTab === 'content' ? 'active' : ''}`}
-              onClick={() => setActiveDetailTab('content')}
+              style={{  border: 'none', background: 'none', fontSize: '14px', fontWeight: '500', color: activeDetailTab === 'description' ? '#174C7C' : '#6b7280', borderBottom: activeDetailTab === 'description' ? '2px solid #174C7C' : 'none', cursor: 'pointer' }}
+              onClick={() => setActiveDetailTab('description')}
             >
-              <BookOpen size={16} /> Content
+              Description
             </button>
             <button 
-              className={`mybatch-tab ${activeDetailTab === 'syllabus' ? 'active' : ''}`}
-              onClick={() => setActiveDetailTab('syllabus')}
+              style={{ padding: '16px 0', border: 'none', background: 'none', fontSize: '14px', fontWeight: '500', color: activeDetailTab === 'classes' ? '#174C7C' : '#6b7280', borderBottom: activeDetailTab === 'classes' ? '2px solid #174C7C' : 'none', cursor: 'pointer' }}
+              onClick={() => setActiveDetailTab('classes')}
             >
-              <Layers size={16} /> Syllabus
+              All Classes
             </button>
             <button 
-              className={`mybatch-tab ${activeDetailTab === 'resources' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveDetailTab('resources');
-                if (selectedBatch && currentChapter !== null) {
-                  generateChapterResources(currentChapter);
-                }
-              }}
+              style={{ padding: '16px 0', border: 'none', background: 'none', fontSize: '14px', fontWeight: '500', color: activeDetailTab === 'community' ? '#174C7C' : '#6b7280', borderBottom: activeDetailTab === 'community' ? '2px solid #174C7C' : 'none', cursor: 'pointer' }}
+              onClick={() => setActiveDetailTab('community')}
             >
-              <Book size={16} /> Resources
-            </button>
-            <button 
-              className={`mybatch-tab ${activeDetailTab === 'flashcards' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveDetailTab('flashcards');
-                if (selectedBatch && currentChapter !== null) {
-                  generateFlashcards(currentChapter);
-                }
-              }}
-            >
-              <BookMarked size={16} /> Flashcards
-            </button>
-            <button 
-              className={`mybatch-tab ${activeDetailTab === 'questions' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveDetailTab('questions');
-                if (selectedBatch && currentChapter !== null) {
-                  generateImportantQuestions(currentChapter);
-                }
-              }}
-            >
-              <HelpCircle size={16} /> Important Questions
-            </button>
-            <button 
-              className={`mybatch-tab ${activeDetailTab === 'tests' ? 'active' : ''}`}
-              onClick={() => setActiveDetailTab('tests')}
-            >
-              <FileText size={16} /> Tests & Assignments
+              Community
             </button>
           </div>
           
-          <div className="mybatch-details-content">
-            {/* Content Tab */}
-            {activeDetailTab === 'content' && (
-              <div className="mybatch-description-section">
-                <div className="mybatch-smart-insights">
-                  <h3>🧠 AI Study Insights</h3>
-                  <div className="mybatch-insights-grid">
-                    <div className="mybatch-insight-card">
-                      <h4>Best Study Time</h4>
-                      <p>You learn best between 9-11 AM</p>
+          <div className="mybatch-details-content" style={{ maxWidth: '1200px', margin: '', padding: '24px' }}>
+            {activeDetailTab === 'description' && (
+              <div>
+                <div style={{  borderRadius: '12px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>This Batch Includes</h3>
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Calendar size={14} style={{ color: '#174C7C' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: '500', fontSize: '14px' }}>Course Duration</div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>{selectedBatch.estimatedTime || 'Flexible'}</div>
+                      </div>
                     </div>
-                    <div className="mybatch-insight-card">
-                      <h4>Weak Areas</h4>
-                      <p>Focus more on practical examples</p>
+                    <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <BookOpen size={14} style={{ color: '#174C7C' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: '500', fontSize: '14px' }}>Daily Lectures</div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>Classes will be held regularly</div>
+                      </div>
                     </div>
-                    <div className="mybatch-insight-card">
-                      <h4>Recommendation</h4>
-                      <p>Take 5-min breaks every 25 minutes</p>
+                    <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <FileText size={14} style={{ color: '#174C7C' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: '500', fontSize: '14px' }}>Study Materials</div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>PDF Notes and resources included</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <h3>Description</h3>
-                <p>{selectedBatch.aiLearningPlan?.description || "No description available."}</p>
                 
-                {currentChapter !== null && selectedBatch.aiLearningPlan?.chapters[currentChapter] && (
-                  <div className="mybatch-current-chapter">
-                    <h3>Current Chapter: {selectedBatch.aiLearningPlan.chapters[currentChapter].title}</h3>
-                    <p>{selectedBatch.aiLearningPlan.chapters[currentChapter].topics.map(t => t.explanation).join(" ")}</p>
-                    
-                    <div className="mybatch-chapter-progress">
-                      <h4>Chapter Progress</h4>
-                      <div className="mybatch-progress-container">
-                        <div 
-                          className="mybatch-progress-bar" 
-                          style={{ 
-                            width: `${selectedBatch.completionStatus[currentChapter]?.topics.filter(t => t.completed).length / 
-                              selectedBatch.completionStatus[currentChapter]?.topics.length * 100}%` 
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                    
-                    <div className="mybatch-chapter-actions">
-                      <button 
-                        className="mybatch-btn mybatch-btn-resources"
-                        onClick={() => {
-                          generateChapterResources(currentChapter);
-                          setActiveDetailTab('resources');
-                        }}
-                      >
-                        <Book size={16} /> View Resources
-                      </button>
-                      <button 
-                        className="mybatch-btn mybatch-btn-flashcards"
-                        onClick={() => {
-                          generateFlashcards(currentChapter);
-                          setActiveDetailTab('flashcards');
-                        }}
-                      >
-                        <BookMarked size={16} /> Study Flashcards
-                      </button>
+                <div style={{  borderRadius: '12px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>About This Course</h3>
+                  <p style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.6' }}>
+                    {selectedBatch.aiLearningPlan?.description || "This comprehensive course covers all essential topics with hands-on practice and real-world examples."}
+                  </p>
+                  <div style={{ marginTop: '20px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Subjects: {selectedBatch.subject}</div>
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>Difficulty: {selectedBatch.difficulty}</div>
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>Language: {selectedBatch.language}</div>
+                  </div>
+                </div>
+                
+                <div style={{  borderRadius: '12px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>Know Your Teachers</h3>
+                  <div style={{ display: 'flex', alignItems: 'start', gap: '16px' }}>
+                    <img 
+                      src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150" 
+                      alt={selectedBatch.instructor}
+                      style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>{selectedBatch.instructor}</h4>
+                      <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>
+                        Expert instructor with 10+ years of experience in {selectedBatch.subject}. Passionate about teaching and helping students achieve their learning goals.
+                      </p>
                     </div>
                   </div>
-                )}
+                </div>
+                
+                <div style={{  borderRadius: '12px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>FAQs</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                      { q: 'How long do I have access to this course?', a: 'You have lifetime access to all course materials once enrolled.' },
+                      { q: 'Can I download the course materials?', a: 'Yes, all PDF notes and resources can be downloaded for offline study.' },
+                      { q: 'Is there a certificate upon completion?', a: "Yes, you'll receive a certificate after completing all chapters and passing the tests." },
+                      { q: 'Can I ask questions to the instructor?', a: 'Yes, you can ask questions through the community tab and get responses from instructors.' }
+                    ].map((faq, index) => (
+                      <div key={index} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                        <button
+                          onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'white', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <HelpCircle size={16} style={{ color: '#174C7C', flexShrink: 0 }} />
+                            <h4 style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>{faq.q}</h4>
+                          </div>
+                          {openFaqIndex === index ? <ChevronUp size={18} style={{ color: '#6b7280' }} /> : <ChevronDown size={18} style={{ color: '#6b7280' }} />}
+                        </button>
+                        {openFaqIndex === index && (
+                          <div style={{ padding: '12px 16px 16px 40px', backgroundColor: '#f9fafb', borderTop: '1px solid #e5e7eb' }}>
+                            <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>{faq.a}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
             
-            {/* Syllabus Tab */}
-            {activeDetailTab === 'syllabus' && selectedBatch.aiLearningPlan?.chapters && selectedBatch.aiLearningPlan.chapters.length > 0 && (
-              <div className="mybatch-syllabus-section">
-                <h3>Syllabus</h3>
-                {selectedBatch.aiLearningPlan.chapters.map((chapter, index) => {
-                  const isUnlocked = isChapterUnlocked(selectedBatch, index);
-                  const chapterStatus = selectedBatch.completionStatus?.[index] || { completed: false, topics: [], testAttempted: false };
-                  const isCompleted = chapterStatus.completed;
-                  const testAttempted = chapterStatus.testAttempted;
-                  const assignmentCompleted = chapterStatus.assignmentCompleted;
-                  const noteKey = `${selectedBatch.id}-${index}`;
-                  const chapterNote = notes[noteKey] || "";
-                  
-                  return (
-                    <div 
-                      className={`mybatch-chapter-accordion ${!isUnlocked ? 'locked' : ''} ${isCompleted ? 'completed' : ''}`} 
-                      key={index}
-                    >
-                      <button 
-                        className="mybatch-chapter-header"
-                        onClick={() => isUnlocked && setOpenChapterIndex(openChapterIndex === index ? null : index)}
-                        disabled={!isUnlocked}
-                      >
-                        <div className="chapter-header-content">
-                          <h4>
-                            {isCompleted && <CheckCircle size={18} className="chapter-complete-icon" />}
-                            {!isUnlocked && <Lock size={18} className="chapter-lock-icon" />}
-                            Chapter {index + 1}: {chapter.title}
-                          </h4>
-                          {testAttempted && (
-                            <span className="chapter-test-score">Test: {chapterStatus.testScore}%</span>
-                          )}
-                        </div>
-                        {openChapterIndex === index ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                      </button>
-                      
-                      {openChapterIndex === index && isUnlocked && (
-                        <div className="mybatch-chapter-content">
-                          {/* Topics */}
-                          {chapter.topics && chapter.topics.map((topic, topicIndex) => {
-                            const isTopicCompleted = chapterStatus && 
-                              chapterStatus.topics[topicIndex] && 
-                              chapterStatus.topics[topicIndex].completed;
-                            const topicKey = `${selectedBatch.id}-${index}-${topicIndex}`;
-                            const hasDetailedExplanation = detailedTopics[topicKey];
-                              
-                            return (
-                              <div className="mybatch-topic-item" key={topicIndex}>
-                                <div className="mybatch-topic-header">
-                                  <input 
-                                    type="checkbox" 
-                                    id={`topic-${index}-${topicIndex}`}
-                                    checked={isTopicCompleted || false}
-                                    onChange={() => markTopicCompleted(index, topicIndex)}
-                                  />
-                                  <h5>{topic.title}</h5>
-                                </div>
-                                <div className="mybatch-topic-details">
-                                  {!hasDetailedExplanation ? (
-                                    <div className="mybatch-topic-section">
-                                      <p>{topic.explanation}</p>
-                                      <button 
-                                        className="mybatch-btn mybatch-btn-detail"
-                                        onClick={() => generateDetailedTopicExplanation(index, topicIndex)}
-                                      >
-                                        Show Detailed Explanation
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="mybatch-topic-detailed">
-                                      <div className="mybatch-topic-explanation">
-                                        <h6>Detailed Explanation</h6>
-                                        <p>{detailedTopics[topicKey].detailedExplanation}</p>
-                                      </div>
-                                      
-                                      {detailedTopics[topicKey].examples?.length > 0 && (
-                                        <div className="mybatch-topic-examples">
-                                          <h6>Examples</h6>
-                                          <ul>
-                                            {detailedTopics[topicKey].examples.map((example, i) => (
-                                              <li key={i}>{example}</li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
-                                      
-                                      {detailedTopics[topicKey].codeSnippets?.length > 0 && (
-                                        <div className="mybatch-topic-code">
-                                          <h6>Code Examples</h6>
-                                          {detailedTopics[topicKey].codeSnippets.map((code, i) => (
-                                            <pre key={i} className="mybatch-code-snippet">
-                                              <code>{code}</code>
-                                            </pre>
-                                          ))}
-                                        </div>
-                                      )}
-                                      
-                                      {detailedTopics[topicKey].diagrams?.length > 0 && (
-                                        <div className="mybatch-topic-diagrams">
-                                          <h6>Diagrams & Visualizations</h6>
-                                          {detailedTopics[topicKey].diagrams.map((diagram, i) => (
-                                            <div key={i} className="mybatch-diagram-description">
-                                              <p>{diagram}</p>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                      
-                                      {detailedTopics[topicKey].commonMisconceptions?.length > 0 && (
-                                        <div className="mybatch-topic-misconceptions">
-                                          <h6>Common Misconceptions</h6>
-                                          <ul>
-                                            {detailedTopics[topicKey].commonMisconceptions.map((misconception, i) => (
-                                              <li key={i}>{misconception}</li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
-                                      
-                                      {detailedTopics[topicKey].practicalApplications?.length > 0 && (
-                                        <div className="mybatch-topic-applications">
-                                          <h6>Practical Applications</h6>
-                                          <ul>
-                                            {detailedTopics[topicKey].practicalApplications.map((application, i) => (
-                                              <li key={i}>{application}</li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                          
-                          {/* Notes Section */}
-                          <div className="mybatch-notes-section">
-                            <h5><Edit3 size={16} /> Chapter Notes</h5>
-                            <textarea 
-                              className="mybatch-notes-textarea"
-                              value={currentNote}
-                              onChange={(e) => setCurrentNote(e.target.value)}
-                              placeholder="Write your notes here..."
-                            ></textarea>
-                            <button 
-                              className="mybatch-btn mybatch-btn-save-note"
-                              onClick={() => saveNote(index)}
-                            >
-                              Save Note
-                            </button>
-                            
-                            {chapterNote && (
-                              <div className="mybatch-saved-note">
-                                <h6>Saved Notes:</h6>
-                                <p>{chapterNote}</p>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Enhanced Chapter Actions */}
-                          <div className="mybatch-chapter-actions">
-                            <div className="mybatch-action-row">
-                              <button 
-                                className="mybatch-btn mybatch-btn-resources"
-                                onClick={() => {
-                                  setCurrentChapter(index);
-                                  generateChapterResources(index);
-                                  setActiveDetailTab('resources');
-                                }}
-                              >
-                                <Book size={16} /> Resources
-                              </button>
-                              
-                              <button 
-                                className="mybatch-btn mybatch-btn-flashcards"
-                                onClick={() => {
-                                  setCurrentChapter(index);
-                                  generateFlashcards(index);
-                                  setActiveDetailTab('flashcards');
-                                }}
-                              >
-                                <BookMarked size={16} /> Flashcards
-                              </button>
-                              
-                              <button 
-                                className="mybatch-btn mybatch-btn-test"
-                                onClick={() => {
-                                  setCurrentChapter(index);
-                                  generateTestQuestions(index);
-                                  setShowTestModal(true);
-                                }}
-                              >
-                                <FileText size={16} /> {testAttempted ? 'Retake Test' : 'Take Test'}
-                              </button>
-                            </div>
-                            
-                            <div className="mybatch-action-row">
-                              <button 
-                                className="mybatch-btn mybatch-btn-collaborate"
-                                onClick={() => alert('Study group discussion for this chapter!')}
-                              >
-                                <MessageSquare size={16} /> Discuss
-                              </button>
-                              
-                              <button 
-                                className="mybatch-btn mybatch-btn-ai-help"
-                                onClick={() => alert('AI tutor will help you with doubts!')}
-                              >
-                                <Lightbulb size={16} /> AI Help
-                              </button>
-                              
-                              <button 
-                                className="mybatch-btn mybatch-btn-download"
-                                onClick={() => alert('Download functionality would be implemented here')}
-                              >
-                                <FileDown size={16} /> Download
-                              </button>
-                            </div>
-                            
-                            {testAttempted && (
-                              <div className="mybatch-action-row">
-                                <button 
-                                  className="mybatch-btn mybatch-btn-assignment"
-                                  onClick={() => {
-                                    setCurrentChapter(index);
-                                    generateAssignmentPrompt(index);
-                                    setShowAssignmentModal(true);
-                                  }}
-                                  disabled={assignmentCompleted}
-                                >
-                                  <Edit3 size={16} /> {assignmentCompleted ? 'Assignment Done' : 'Assignment'}
-                                </button>
-                                
-                                {isCompleted && (
-                                  <button 
-                                    className="mybatch-btn mybatch-btn-certificate"
-                                    onClick={() => setShowCertificateModal(true)}
-                                  >
-                                    <Award size={16} /> Certificate
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+            {activeDetailTab === 'classes' && selectedBatch.aiLearningPlan?.chapters && (
+              <div style={{ marginTop:'-50px', marginLeft:'-50px', padding: '24px' }}>
+                <SyllabusList 
+                  chapters={selectedBatch.aiLearningPlan.chapters}
+                  onChapterClick={(chapter, index) => {
+                    setSelectedChapterForVideo(chapter);
+                    setSelectedChapterIndex(index);
+                    setSelectedTopic(null);
+                    setShowVideoModal(true);
+                  }}
+                  onTopicClick={(chapter, topic) => {
+                    setSelectedChapterForVideo(chapter);
+                    setSelectedTopic(topic);
+                    setShowVideoModal(true);
+                  }}
+                />
               </div>
             )}
+            
+            {activeDetailTab === 'tests' && (
+              <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>Tests & Assignments</h3>
+                <p style={{ fontSize: '14px', color: '#6b7280' }}>Complete classes to unlock tests and assignments.</p>
+              </div>
+            )}
+            
+            {activeDetailTab === 'announcements' && (
+              <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>Announcements</h3>
+                <p style={{ fontSize: '14px', color: '#6b7280' }}>No announcements yet.</p>
+              </div>
+            )}
+            
+            {activeDetailTab === 'community' && (
+              <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>Community</h3>
+                <p style={{ fontSize: '14px', color: '#6b7280' }}>Connect with other learners in this batch.</p>
+              </div>
+            )}
+            
+          
             
             {/* Resources Tab */}
             {activeDetailTab === 'resources' && (
@@ -2335,59 +2041,115 @@ Only return valid JSON, no other text.
       {/* Test Modal */}
       {showTestModal && selectedBatch && currentChapter !== null && (
         <div className="pw-modal-overlay">
-          <div className="pw-modal-content pw-test-modal">
-            <h2>Chapter {currentChapter + 1} Test</h2>
-            <div className="pw-test-content">
+          <div className="pw-modal-content" style={{ maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '2px solid #e5e7eb' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: '#174C7C' }}>Chapter {currentChapter + 1} Test</h2>
+              <button onClick={() => setShowTestModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px', color: '#6b7280' }}>×</button>
+            </div>
+            
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               {testLoading ? (
-                <div className="pw-test-loading">
-                  <div className="pw-spinner"></div>
-                  <p>Generating test questions...</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
+                  <div className="pw-spinner" style={{ width: '40px', height: '40px', marginBottom: '16px' }}></div>
+                  <p style={{ color: '#6b7280', fontSize: '14px' }}>Generating test questions...</p>
                 </div>
               ) : (
                 <>
-                  <p>Answer the following questions to complete the chapter test.</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>Answer the following questions to complete the chapter test.</p>
                   
                   {testQuestions.map((question, qIndex) => (
-                    <div className="pw-test-question" key={qIndex}>
-                      <p>{qIndex + 1}. {question.question}</p>
-                      <div className="pw-options-grid">
-                        {question.options.map((option, oIndex) => (
-                          <label 
-                            className={`pw-option-label ${testAnswers[qIndex] === oIndex ? 'selected' : ''}`}
-                            key={oIndex}
-                          >
-                            <input 
-                              type="radio" 
-                              name={`q${qIndex}`} 
-                              value={oIndex} 
-                              checked={testAnswers[qIndex] === oIndex}
-                              onChange={() => setTestAnswers({...testAnswers, [qIndex]: oIndex})}
-                            /> 
-                            {option}
-                          </label>
-                        ))}
+                    <div key={qIndex} style={{ marginBottom: '32px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                        <span style={{ padding: '4px 12px', backgroundColor: question.type === 'mcq' ? '#dbeafe' : '#fef3c7', color: question.type === 'mcq' ? '#174C7C' : '#92400e', fontSize: '12px', fontWeight: '600', borderRadius: '6px' }}>
+                          {question.type === 'mcq' ? 'Multiple Choice' : 'Text Answer'}
+                        </span>
                       </div>
+                      <p style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>{qIndex + 1}. {question.question}</p>
+                      
+                      {question.type === 'mcq' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {question.options.map((option, oIndex) => (
+                            <label 
+                              key={oIndex}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                padding: '12px 16px', 
+                                backgroundColor: testAnswers[qIndex] === oIndex ? '#dbeafe' : 'white',
+                                border: testAnswers[qIndex] === oIndex ? '2px solid #174C7C' : '1px solid #d1d5db',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <input 
+                                type="radio" 
+                                name={`q${qIndex}`} 
+                                value={oIndex} 
+                                checked={testAnswers[qIndex] === oIndex}
+                                onChange={() => setTestAnswers({...testAnswers, [qIndex]: oIndex})}
+                                style={{ marginRight: '12px', accentColor: '#174C7C' }}
+                              /> 
+                              <span style={{ fontSize: '14px', color: '#374151' }}>{option}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <textarea
+                          value={testAnswers[qIndex] || ''}
+                          onChange={(e) => setTestAnswers({...testAnswers, [qIndex]: e.target.value})}
+                          placeholder="Type your answer here..."
+                          style={{ 
+                            width: '100%', 
+                            minHeight: '100px', 
+                            padding: '12px', 
+                            border: '2px solid #d1d5db', 
+                            borderRadius: '8px', 
+                            fontSize: '14px',
+                            fontFamily: 'inherit',
+                            resize: 'vertical',
+                            backgroundColor: 'white',
+                            color: '#374151'
+                          }}
+                        />
+                      )}
                     </div>
                   ))}
-                  
-                  <div className="pw-form-actions">
-                    <button 
-                      className="pw-btn" 
-                      onClick={() => setShowTestModal(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      className="pw-btn pw-btn-primary" 
-                      onClick={() => handleTestCompletion(currentChapter, calculateTestScore())}
-                      disabled={Object.keys(testAnswers).length < testQuestions.length}
-                    >
-                      Submit Test
-                    </button>
-                  </div>
                 </>
               )}
             </div>
+            
+            {!testLoading && (
+              <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9fafb' }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button 
+                    onClick={() => setShowTestModal(false)}
+                    style={{ padding: '10px 20px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                  {Object.keys(testAnswers).filter(k => testAnswers[k] !== undefined && testAnswers[k] !== '').length} / {testQuestions.length} answered
+                </div>
+                <button 
+                  onClick={() => handleTestCompletion(currentChapter, calculateTestScore())}
+                  disabled={Object.keys(testAnswers).filter(k => testAnswers[k] !== undefined && testAnswers[k] !== '').length < testQuestions.length}
+                  style={{ 
+                    padding: '10px 24px', 
+                    backgroundColor: Object.keys(testAnswers).filter(k => testAnswers[k] !== undefined && testAnswers[k] !== '').length < testQuestions.length ? '#9ca3af' : '#174C7C', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    fontSize: '14px', 
+                    fontWeight: '600', 
+                    cursor: Object.keys(testAnswers).filter(k => testAnswers[k] !== undefined && testAnswers[k] !== '').length < testQuestions.length ? 'not-allowed' : 'pointer' 
+                  }}
+                >
+                  Submit Test
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2557,8 +2319,8 @@ Only return valid JSON, no other text.
         </div>
       )}
       
-      {/* Resources Modal */}
-      {showResourcesModal && selectedBatch && currentChapter !== null && (
+      {/* Resources Modal - HIDDEN */}
+      {false && showResourcesModal && selectedBatch && currentChapter !== null && (
         <div className="pw-modal-overlay">
           <div className="pw-modal-content pw-resources-modal">
             <h2>Learning Resources</h2>
@@ -2780,6 +2542,206 @@ Only return valid JSON, no other text.
               </button>
               <button className="pw-btn pw-btn-primary">
                 <Download size={18} /> Download Certificate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Video Modal */}
+      {showVideoModal && selectedChapterForVideo && (
+        <div className="mybatch-video-view" style={{ backgroundColor: '#fefefe', zIndex: 1000, overflowY: 'auto' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
+            <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '16px', borderBottom: '1px solid #e8e8e8', paddingBottom: '16px' }}>
+              <button 
+                onClick={() => setShowVideoModal(false)}
+                style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#6b7280' }}
+              >
+                <ArrowLeft size={18} /> Back
+              </button>
+              <h2 style={{ fontSize: '22px', fontWeight: '600', margin: 0, fontFamily: 'Georgia, serif', color: '#1a1a1a' }}>{selectedChapterForVideo.title}</h2>
+              {selectedTopic && <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#6b7280', margin: 0, fontFamily: 'Georgia, serif' }}> • {selectedTopic.title}</h3>}
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+              <button style={{ padding: '8px 20px', backgroundColor: '#174C7C', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <BookOpen size={16} /> Study
+              </button>
+              <button 
+                onClick={() => setShowDoubtModal(true)}
+                style={{ padding: '8px 20px', backgroundColor: 'white', color: '#174C7C', border: '2px solid #174C7C', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <MessageSquare size={16} /> Ask Doubt
+              </button>
+              <button 
+                onClick={() => {
+                  setCurrentChapter(selectedChapterIndex);
+                  generateTestQuestions(selectedChapterIndex);
+                  setShowTestModal(true);
+                }}
+                style={{ padding: '8px 20px', backgroundColor: '#174C7C', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <CheckCircle size={16} /> Next
+              </button>
+            </div>
+            
+            <div>
+              <div style={{ 
+                backgroundColor: '#fefefe',
+                padding: '0',
+                marginBottom: '24px',
+                boxShadow: 'none',
+                border: 'none'
+              }}>
+                {selectedTopic ? (
+                  <>
+                    <MarkdownRenderer content={selectedTopic.explanation} />
+                    {selectedTopic.importantLinks && selectedTopic.importantLinks.length > 0 && (
+                      <div style={{ marginTop: '32px', padding: '20px', backgroundColor: '#f0f9ff', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
+                        <h4 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#174C7C' }}>📚 Important Links</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {selectedTopic.importantLinks.map((link, idx) => (
+                            <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', backgroundColor: 'white', borderRadius: '8px', textDecoration: 'none', color: '#174C7C', border: '1px solid #e5e7eb' }}>
+                              <span style={{ fontSize: '20px' }}>{link.type === 'documentation' ? '📖' : link.type === 'article' ? '📝' : '🎓'}</span>
+                              <div>
+                                <div style={{ fontWeight: '600', fontSize: '14px' }}>{link.title}</div>
+                                <div style={{ fontSize: '12px', color: '#6b7280' }}>{link.type}</div>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div>
+                    {selectedChapterForVideo.topics?.map((topic, index) => (
+                      <div key={index} style={{ 
+                        marginBottom: '48px', 
+                        paddingBottom: '40px', 
+                        borderBottom: index < selectedChapterForVideo.topics.length - 1 ? '1px solid #e8e8e8' : 'none' 
+                      }}>
+                        <h4 style={{ 
+                          fontSize: '19px', 
+                          fontWeight: '600', 
+                          marginBottom: '20px', 
+                          color: '#1a1a1a',
+                          fontFamily: 'Georgia, serif'
+                        }}>{topic.title}</h4>
+                        <MarkdownRenderer content={topic.explanation} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div 
+                  onClick={handleVideoClick}
+                  style={{ 
+                    position: 'relative', 
+                    paddingBottom: '56.25%', 
+                    height: 0, 
+                    overflow: 'hidden', 
+                    borderRadius: '12px', 
+                    backgroundColor: '#000', 
+                    marginBottom: '20px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <video
+                    ref={videoRef}
+                    loop
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: '12px', objectFit: 'cover' }}
+                    src="https://ik.imagekit.io/qwzhnpeqg/mockround.ai%20imges%20public/video2.mp4?updatedAt=1767107552476"
+                  />
+                  {!isVideoPlaying && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '50%', 
+                      left: '50%', 
+                      transform: 'translate(-50%, -50%)',
+                      backgroundColor: 'rgba(23, 76, 124, 0.8)',
+                      borderRadius: '50%',
+                      width: '60px',
+                      height: '60px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '24px'
+                    }}>
+                      ▶
+                    </div>
+                  )}
+                </div>
+                
+                <button
+                  onClick={() => {
+                    const nextIndex = selectedChapterIndex + 1;
+                    if (nextIndex < selectedBatch.aiLearningPlan.chapters.length) {
+                      setSelectedChapterForVideo(selectedBatch.aiLearningPlan.chapters[nextIndex]);
+                      setSelectedChapterIndex(nextIndex);
+                      setSelectedTopic(null);
+                    }
+                  }}
+                  disabled={selectedChapterIndex >= selectedBatch.aiLearningPlan.chapters.length - 1}
+                  style={{ width: '100%', padding: '12px', backgroundColor: '#174C7C', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', opacity: selectedChapterIndex >= selectedBatch.aiLearningPlan.chapters.length - 1 ? 0.5 : 1 }}
+                >
+                  Next Chapter
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Doubt Modal */}
+      {showDoubtModal && (
+        <div className="pw-modal-overlay" style={{ zIndex: 1001 }}>
+          <div className="pw-modal-content" style={{ maxWidth: '700px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #e5e7eb' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>Ask Your Doubt</h2>
+              <button onClick={() => setShowDoubtModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#6b7280' }}>×</button>
+            </div>
+            
+            <div style={{ flex: 1, overflowY: 'auto', marginBottom: '16px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', minHeight: '300px' }}>
+              {doubtMessages.map((msg, index) => (
+                <div key={index} style={{ marginBottom: '12px', display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                  <div style={{ 
+                    maxWidth: '80%', 
+                    padding: '10px 14px', 
+                    borderRadius: '12px', 
+                    backgroundColor: msg.role === 'user' ? '#174C7C' : 'white',
+                    color: msg.role === 'user' ? 'white' : '#1f2937',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                  }}>
+                    <MarkdownRenderer content={msg.content} />
+                  </div>
+                </div>
+              ))}
+              {doubtLoading && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '12px' }}>
+                  <div style={{ padding: '10px 14px', borderRadius: '12px', backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <div className="pw-spinner" style={{ width: '20px', height: '20px' }}></div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                type="text"
+                value={doubtQuestion}
+                onChange={(e) => setDoubtQuestion(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAskDoubt()}
+                placeholder="Type your question here..."
+                style={{ flex: 1, padding: '10px 14px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+              />
+              <button 
+                onClick={handleAskDoubt}
+                disabled={!doubtQuestion.trim() || doubtLoading}
+                style={{ padding: '10px 20px', backgroundColor: '#174C7C', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', opacity: (!doubtQuestion.trim() || doubtLoading) ? 0.5 : 1 }}
+              >
+                Send
               </button>
             </div>
           </div>

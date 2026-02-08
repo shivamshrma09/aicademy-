@@ -2,44 +2,129 @@ const studentService = require("../services/student.service");
 const studentModel = require("../models/student.models");
 const { validationResult } = require("express-validator");
 const jwt = require('jsonwebtoken');
+const otpService = require('../services/otp.service');
+const emailService = require('../services/email.service');
 
-// Register Student
+// Step 1: Send OTP for Registration
+exports.sendRegistrationOTP = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array().map(err => ({ field: err.path, message: err.msg }))
+      });
+    }
+
+    const { email } = req.body;
+    
+    // Check if user already exists
+    const isUserAlready = await studentModel.findOne({ email: email.toLowerCase() });
+    if (isUserAlready) {
+      return res.status(400).json({ 
+        success: false,
+        message: "User with this email already exists" 
+      });
+    }
+
+    // Send OTP
+    const result = await otpService.createAndSendOTP(email, 'registration');
+    
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent to your email. Please verify to complete registration.',
+      expiresIn: result.expiresIn
+    });
+
+  } catch (err) {
+    console.error('Send registration OTP error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to send OTP. Please try again.",
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+};
+
+// Step 2: Verify OTP and Complete Registration
 exports.RegisterStudent = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array().map(err => ({ field: err.path, message: err.msg }))
+      });
     }
 
-    const { name, email, password, course } = req.body;
-    const isUserAlready = await studentModel.findOne({ email });
+    const { name, email, password, course, otp } = req.body;
+    
+    // Verify OTP
+    const otpVerification = await otpService.verifyOTP(email, otp, 'registration');
+    if (!otpVerification.success) {
+      return res.status(400).json({ 
+        success: false,
+        message: otpVerification.message
+      });
+    }
 
+    // Check if user already exists (double check)
+    const isUserAlready = await studentModel.findOne({ email: email.toLowerCase() });
     if (isUserAlready) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ 
+        success: false,
+        message: "User with this email already exists" 
+      });
     }
 
-    const hashedPassword = await studentModel.hashPassword(password);
+    // Create student (password will be hashed in service)
     const student = await studentService.createStudent({
-      name,
-      email,
-      password: hashedPassword,
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      password,
       course,
     });
+    
+    // Generate token
     const token = student.generateAuthToken();
 
+    // Set httpOnly cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    // Send welcome email (non-blocking)
+    emailService.sendWelcomeEmail(email, name).catch(err => 
+      console.error('Welcome email failed:', err)
+    );
+
+    // Return success response
     res.status(201).json({
+      success: true,
+      message: "Registration successful",
       token,
       user: {
-        id: student._id,
+        _id: student._id,
         name: student.name,
         email: student.email,
         course: student.course,
+        totalPoints: student.totalPoints || 0,
+        rank: student.rank || 0,
+        streak: student.streak || 0,
+        numberOfBatchesCompleted: student.numberOfBatchesCompleted || 0
       },
     });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: err.message });
+    console.error('Registration error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: "Registration failed. Please try again.",
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -347,31 +432,131 @@ exports.getUserWithStats = async (req, res) => {
 
 
 
+// Step 1: Send OTP for Login
+exports.sendLoginOTP = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array().map(err => ({ field: err.path, message: err.msg }))
+      });
+    }
+
+    const { email, password } = req.body;
+
+    // Find student with password field
+    const student = await studentModel.findOne({ email: email.toLowerCase() }).select("+password");
+
+    if (!student) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Invalid email or password" 
+      });
+    }
+
+    // Verify password
+    const isMatch = await student.comparePassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Invalid email or password" 
+      });
+    }
+
+    // Send OTP
+    const result = await otpService.createAndSendOTP(email, 'login');
+    
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent to your email. Please verify to complete login.',
+      expiresIn: result.expiresIn
+    });
+
+  } catch (err) {
+    console.error('Send login OTP error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to send OTP. Please try again.",
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+};
+
+// Step 2: Verify OTP and Complete Login
 exports.loginstudent = async (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array().map(err => ({ field: err.path, message: err.msg }))
+      });
+    }
+
+    const { email, otp } = req.body;
+
+    // Verify OTP
+    const otpVerification = await otpService.verifyOTP(email, otp, 'login');
+    if (!otpVerification.success) {
+      return res.status(400).json({ 
+        success: false,
+        message: otpVerification.message
+      });
+    }
+
+    // Find student
+    const student = await studentModel.findOne({ email: email.toLowerCase() });
+
+    if (!student) {
+      return res.status(401).json({ 
+        success: false,
+        message: "User not found" 
+      });
+    }
+
+    // Generate token
+    const token = student.generateAuthToken();
+
+    // Set httpOnly cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    // Update last active date
+    student.lastActiveDate = new Date();
+    await student.save();
+
+    // Return success response
+    res.status(200).json({ 
+      success: true,
+      message: "Login successful",
+      token, 
+      user: {
+        _id: student._id,
+        name: student.name,
+        email: student.email,
+        course: student.course,
+        totalPoints: student.totalPoints || 0,
+        rank: student.rank || 0,
+        streak: student.streak || 0,
+        numberOfBatchesCompleted: student.numberOfBatchesCompleted || 0,
+        batches: student.batches || [],
+        libraryItems: student.libraryItems || []
+      }
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: "Login failed. Please try again.",
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
-
-  const { email, password } = req.body;
-
-  const student = await studentModel.findOne({ email }).select("+password");
-
-  if (!student) {
-    return res.status(401).json({ message: "Invalid email or password" });
-  }
-
-  const isMatch = await student.comparePassword(password);
-
-  if (!isMatch) {
-    return res.status(401).json({ message: "Invalid email or password" });
-  }
-
-  const token = student.generateAuthToken();
-
-  res.cookie("token", token);
-
-  res.status(200).json({ token, student });
 };
 
 

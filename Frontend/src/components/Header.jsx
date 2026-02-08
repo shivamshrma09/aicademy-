@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Search, Trophy, Flame, Menu, CheckSquare } from 'lucide-react';
+import { Bell, Search, Trophy, Flame, Menu, CheckSquare, LogOut } from 'lucide-react';
+import { authService } from '../utils/auth';
 import './Header.css';
 
 const Header = ({ onMenuToggle, onTodoToggle }) => {
@@ -8,31 +9,27 @@ const Header = ({ onMenuToggle, onTodoToggle }) => {
     streak: 0,
     totalPoints: 0,
     numberOfBatchesCompleted: 0,
-    avatar: null // or add avatar url here if any
+    avatar: null
   });
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/students/user`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Unauthorized or other error');
-        }
-        return response.json();
-      })
-      .then(data => {
-        setUser(data);
-      })
-      .catch(error => {
+    const fetchUser = async () => {
+      try {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+      } catch (error) {
         console.error('Error fetching user:', error);
-      });
+      }
+    };
+    fetchUser();
   }, []);
+
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      await authService.logout();
+    }
+  };
 
   return (
     <header className="header-root">
@@ -43,8 +40,7 @@ const Header = ({ onMenuToggle, onTodoToggle }) => {
               <Menu size={20} />
             </button>
             <div className="header-logo">
-              <div className="header-logo-icon"><span>IL</span></div>
-              <span className="header-logo-text">IntelliLearn</span>
+              <span className="header-logo-text">AIcademy</span>
             </div>
           </div>
           <div className="header-search-wrap">
@@ -78,13 +74,54 @@ const Header = ({ onMenuToggle, onTodoToggle }) => {
             >
               <CheckSquare size={20} />
             </button>
-            <div className="header-user">
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className="header-user-avatar" />
-              ) : (
-                <div className="header-user-avatar-placeholder">{user.name.charAt(0)}</div>
+            <div className="header-user" style={{ position: 'relative' }}>
+              <div 
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+              >
+                {user.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="header-user-avatar" />
+                ) : (
+                  <div className="header-user-avatar-placeholder">{user.name.charAt(0)}</div>
+                )}
+                <span className="header-user-name">{user.name}</span>
+              </div>
+              
+              {showUserMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  minWidth: '180px',
+                  zIndex: 1000
+                }}>
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#dc2626',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#fee2e2'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  >
+                    <LogOut size={16} />
+                    <span>Logout</span>
+                  </button>
+                </div>
               )}
-              <span className="header-user-name">{user.name}</span>
             </div>
           </div>
         </div>

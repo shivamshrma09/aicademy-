@@ -14,24 +14,22 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Library from './components/Library';
 import Opportunities  from './components/Opportunities';
 import Test from './components/Test';
+import PdfChat from './components/PdfChat';
 import LeetCodeTracker from './components/DSATodo';
 import TodoSidebar from './components/TodoSidebar';
 import PomodoroTimer from './components/PomodoroTimer';
-import DashboardModern from './components/DashboardModern';
 import SaveYourResource from './components/SaveYourResource'; 
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('landing');
+  const { userData } = useUserData();
+  const [currentPage, setCurrentPage] = useState(() => {
+    // Check if user is logged in on initial load
+    const token = localStorage.getItem('token');
+    return token ? 'dashboard' : 'landing';
+  });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [todoOpen, setTodoOpen] = useState(false);
-
-  const { userData } = useUserData();
-  
-  useEffect(() => {
-    // Always start at landing page on initial load
-    setCurrentPage('landing');
-  }, []);
 
   const toggleSidebar = () => setSidebarOpen(prev => !prev);
   const toggleTodo = () => setTodoOpen(prev => !prev);
@@ -39,7 +37,28 @@ function App() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentPage(tab);
+    // Save current page to sessionStorage
+    sessionStorage.setItem('currentPage', tab);
   };
+
+  // Restore last page on reload
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const savedPage = sessionStorage.getItem('currentPage');
+      if (savedPage && ['dashboard', 'my-batch', 'library', 'tests', 'pdf-chat', 'opportunities', 'leetcode', 'save-resource', 'settings'].includes(savedPage)) {
+        setCurrentPage(savedPage);
+        setActiveTab(savedPage);
+      }
+    }
+  }, []);
+
+  // Clear session on logout
+  useEffect(() => {
+    if (!userData && currentPage !== 'landing' && currentPage !== 'login' && currentPage !== 'signup') {
+      sessionStorage.removeItem('currentPage');
+    }
+  }, [userData, currentPage]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -51,7 +70,8 @@ function App() {
         return <Library currentUser={userData} />;
       case 'tests':
          return <Test currentUser={userData} />;
-
+      case 'pdf-chat':
+         return <PdfChat currentUser={userData} />;
       case 'opportunities':
          return <Opportunities currentUser={userData} />;
       case 'leetcode':
@@ -65,7 +85,7 @@ function App() {
     }
   };
 
-  const showLayout = ['dashboard', 'my-batch', 'library', 'tests', 'opportunities', 'leetcode', 'save-resource', 'timer', 'settings'].includes(currentPage);
+  const showLayout = ['dashboard', 'my-batch', 'library', 'tests', 'pdf-chat', 'opportunities', 'leetcode', 'save-resource', 'timer', 'settings'].includes(currentPage);
 
   return (
     <ErrorBoundary>

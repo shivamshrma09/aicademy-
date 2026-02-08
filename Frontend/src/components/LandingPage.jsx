@@ -148,8 +148,7 @@ const LandingPage = ({ onNavigate }) => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
-              <div className="text-3xl font-bold text-primary" >IL</div>
-              <span className="text-2xl font-bold text-primary">IntelliLearn</span>
+              <span className="text-2xl font-bold text-primary">AIcademy</span>
             </div>
             <nav className=" md:flex items-center space-x-8">
               <a href="#features" className="text-primary hover:text-primary transition-colors">Features</a>
@@ -202,24 +201,17 @@ const LandingPage = ({ onNavigate }) => {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 md:py-32 text-center bg-gradient-to-br from-black to-gray-900">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-10 left-10 w-64 h-64 bg-primary/5 rounded-full animate-float-slow"></div>
-          <div className="absolute top-20 right-16 w-48 h-48 bg-accent/8 rounded-full animate-float-medium"></div>
-          <div className="absolute bottom-20 left-1/4 w-32 h-32 bg-primary/10 rounded-full animate-float-fast"></div>
-          <div className="absolute bottom-32 right-1/4 w-56 h-56 bg-accent/6 rounded-full animate-float-slow"></div>
-        </div>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl animate-fade-in-up relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl relative z-10">
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6 animate-bounce-in">
             Master Your Exams with <span className="bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text animate-pulse-glow">AI-Powered Learning</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mb-10 animate-fade-in-up">
-            IntelliLearn is your personal AI tutor, providing adaptive lessons, instant feedback, and
+            AIcademy is your personal AI tutor, providing adaptive lessons, instant feedback, and
             in-depth analytics to help you excel in any competitive exam.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
             <button
-              className="px-8 py-3 rounded-full bg-primary text-primary-foreground text-lg font-semibold hover:bg-primary/80 transition-all duration-300 shadow-xl transform hover:scale-105 animate-pulse-glow hover-lift"
+              className="px-8 py-3 rounded-full bg-primary text-primary-foreground text-lg font-semibold shadow-xl"
               onClick={() => onNavigate("signup")}
             >
               Start Free Trial
@@ -279,7 +271,7 @@ const LandingPage = ({ onNavigate }) => {
               Solving <span className="bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text">Your Biggest Study Challenges</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Traditional learning methods often fall short. IntelliLearn fills the gaps, ensuring a
+              Traditional learning methods often fall short. AIcademy fills the gaps, ensuring a
               smarter, more effective path to success.
             </p>
           </div>
@@ -298,7 +290,7 @@ const LandingPage = ({ onNavigate }) => {
               <MdCheckCircle className="text-white mb-4" size={36} />
               <h3 className="text-xl font-bold mb-2">AI-Driven Personalized Learning Paths</h3>
               <p className="text-white/90">
-                IntelliLearn's AI intelligently analyzes your weaknesses and creates a tailored study plan,
+                AIcademy's AI intelligently analyzes your weaknesses and creates a tailored study plan,
                 guiding you efficiently through complex topics.
               </p>
             </div>
@@ -347,7 +339,7 @@ const LandingPage = ({ onNavigate }) => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 animate-fade-in-up">
             <h2 className="text-3xl md:text-5xl font-extrabold mb-4 text-primary">
-              Discover Powerful <span className="bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text">IntelliLearn Features</span>
+              Discover Powerful <span className="bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text">AIcademy Features</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Harness the power of AI to transform your learning experience and achieve your academic goals.
@@ -409,7 +401,7 @@ const LandingPage = ({ onNavigate }) => {
               Your Path to Success in <span className="bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text">3 Simple Steps</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Getting started with IntelliLearn is easy. Follow these steps to unlock your full academic potential.
+              Getting started with AIcademy is easy. Follow these steps to unlock your full academic potential.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -455,7 +447,7 @@ const LandingPage = ({ onNavigate }) => {
               What Our Students <span className="bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text">Are Saying</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Hear from thousands of students who achieved their academic dreams with IntelliLearn.
+              Hear from thousands of students who achieved their academic dreams with AIcademy.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -470,7 +462,7 @@ const LandingPage = ({ onNavigate }) => {
                   </div>
                 </div>
                 <p className="text-muted-foreground italic mb-4">
-                  "IntelliLearn transformed my JEE preparation. The AI tutor explained complex physics concepts better than any textbook. I saw a significant jump in my scores!"
+                  "AIcademy transformed my JEE preparation. The AI tutor explained complex physics concepts better than any textbook. I saw a significant jump in my scores!"
                 </p>
               </div>
               <div className="flex text-yellow-500">
@@ -488,7 +480,7 @@ const LandingPage = ({ onNavigate }) => {
                   </div>
                 </div>
                 <p className="text-muted-foreground italic mb-4">
-                  "The adaptive practice questions are a game-changer. IntelliLearn identified my weak areas in Biology and helped me master them. Highly recommend!"
+                  "The adaptive practice questions are a game-changer. AIcademy identified my weak areas in Biology and helped me master them. Highly recommend!"
                 </p>
               </div>
               <div className="flex text-yellow-500">
@@ -524,7 +516,7 @@ const LandingPage = ({ onNavigate }) => {
               Flexible Plans for <span className="bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text">Every Student</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Choose the plan that fits your study needs and unlock unlimited access to IntelliLearn's
+              Choose the plan that fits your study needs and unlock unlimited access to AIcademy's
               powerful AI tools.
             </p>
           </div>
@@ -595,13 +587,13 @@ const LandingPage = ({ onNavigate }) => {
               Frequently Asked <span className="bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text">Questions</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Find quick answers to the most common questions about IntelliLearn.
+              Find quick answers to the most common questions about AIcademy.
             </p>
           </div>
           <div className="space-y-4 max-w-3xl mx-auto">
             <details className="bg-background p-5 rounded-lg border border-border shadow-md transition-all duration-300 open:bg-secondary animate-fade-in-up">
               <summary className="flex justify-between items-center cursor-pointer text-lg font-semibold text-primary-blue hover:text-primary transition-colors text-primary" >
-                How does IntelliLearn's AI tutor work?
+                How does AIcademy's AI tutor work?
                 <MdQuestionMark size={24} className="text-primary" />
               </summary>
               <p className="pt-4 text-muted-foreground leading-relaxed">
@@ -612,29 +604,29 @@ const LandingPage = ({ onNavigate }) => {
             </details>
             <details className="bg-background p-5 rounded-lg border border-border shadow-md transition-all duration-300 open:bg-secondary animate-fade-in-up delay-100">
               <summary className="flex justify-between items-center cursor-pointer text-lg font-semibold text-primary-foreground hover:text-primary transition-colors text-primary">
-                What exams and subjects does IntelliLearn cover?
+                What exams and subjects does AIcademy cover?
                 <MdQuestionMark size={24} className="text-primary" />
               </summary>
               <p className="pt-4 text-muted-foreground leading-relaxed">
-                IntelliLearn supports a wide range of competitive exams including JEE, NEET, UPSC, CAT,
+                AIcademy supports a wide range of competitive exams including JEE, NEET, UPSC, CAT,
                 GMAT, and many more. We cover subjects like Physics, Chemistry, Mathematics, Biology,
                 English, General Knowledge, and Reasoning. New exams and subjects are added regularly!
               </p>
             </details>
             <details className="bg-background p-5 rounded-lg border border-border shadow-md transition-all duration-300 open:bg-secondary animate-fade-in-up delay-200">
               <summary className="flex justify-between items-center cursor-pointer text-lg font-semibold text-primary hover:text-primary transition-colors text-primary text-primary">
-                Can I use IntelliLearn on my mobile device?
+                Can I use AIcademy on my mobile device?
                 <MdQuestionMark size={24} className="text-primary" />
               </summary>
               <p className="pt-4 text-muted-foreground leading-relaxed">
-                Yes! IntelliLearn is fully responsive and optimized for all devices. You can access
+                Yes! AIcademy is fully responsive and optimized for all devices. You can access
                 our platform seamlessly on your desktop, laptop, tablet, or smartphone through your web browser.
                 Dedicated mobile apps are also in development.
               </p>
             </details>
             <details className="bg-background p-5 rounded-lg border border-border shadow-md transition-all duration-300 open:bg-secondary animate-fade-in-up delay-300">
               <summary className="flex justify-between items-center cursor-pointer text-lg font-semibold text-primary hover:text-primary transition-colors text-primary">
-                Is my data safe and private with IntelliLearn?
+                Is my data safe and private with AIcademy?
                 <MdQuestionMark size={24} className="text-primary" />
               </summary>
               <p className="pt-4 text-muted-foreground leading-relaxed">
@@ -666,7 +658,7 @@ const LandingPage = ({ onNavigate }) => {
           </h2>
           <p className="text-lg md:text-xl mb-10 opacity-90">
             Join thousands of successful students who are achieving their academic goals with
-            IntelliLearn's cutting-edge AI platform.
+            AIcademy's cutting-edge AI platform.
           </p>
           <button
             className="px-10 py-4 rounded-full bg-white text-primary text-xl font-bold hover:bg-gray-100 transition-all duration-300 shadow-2xl transform hover:scale-105"
@@ -683,11 +675,11 @@ const LandingPage = ({ onNavigate }) => {
             {/* Brand Info */}
             <div>
               <a href="#" className="flex items-center space-x-3 mb-4">
-                < div className="text-primary font-bold text-3xl" >IL</div>
-                <span className="text-2xl font-bold text-primary-foreground">IntelliLearn</span>
+                < div className="text-primary font-bold text-3xl" >AI</div>
+                <span className="text-2xl font-bold text-primary-foreground">AIcademy</span>
               </a>
               <p className="text-sm leading-relaxed max-w-xs">
-                IntelliLearn is revolutionizing education with AI-powered personalized learning,
+                AIcademy is revolutionizing education with AI-powered personalized learning,
                 making complex subjects easy and academic success attainable for everyone.
               </p>
             </div>
@@ -722,7 +714,7 @@ const LandingPage = ({ onNavigate }) => {
             </div>
           </div>
           <div className="text-center text-sm border-t border-gray-800 pt-8 mt-8">
-            © {new Date().getFullYear()} IntelliLearn. All rights reserved.
+            © {new Date().getFullYear()} AIcademy. All rights reserved.
           </div>
         </div>
       </footer>

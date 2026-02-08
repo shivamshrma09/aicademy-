@@ -8,10 +8,10 @@
   --clr-gray-600: #4b5563;
   --clr-gray-700: #374151;
   --clr-gray-900: #111827;
-  --clr-blue-500: #3b82f6;
-  --clr-blue-600: #2563eb;
-  --clr-purple-600: #8b5cf6;
-  --clr-purple-700: #6d28d9;
+  --clr-blue-500: #174C7C;
+  --clr-blue-600: #0f3a5f;
+  --clr-purple-600: #1a5a8a;
+  --clr-purple-700: #174C7C;
   --clr-yellow-400: #fcd34d;
   --clr-green-500: #22c55e;
   --gradient-primary: linear-gradient(to right, var(--clr-blue-500), var(--clr-purple-600));

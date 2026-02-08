@@ -12,7 +12,7 @@
 .settings-title {
   font-size: 2rem;
   font-weight: bold;
-  color: #111827;
+  color: #174C7C;
 }
 .settings-desc {
   color: #6b7280;
@@ -55,8 +55,8 @@
   transition: background 0.2s, color 0.2s;
 }
 .settings-tab-btn.active {
-  background: #eff6ff;
-  color: #2563eb;
+  background: rgba(23, 76, 124, 0.1);
+  color: #174C7C;
 }
 .settings-tab-btn:hover:not(.active) {
   background: #f3f4f6;
@@ -123,7 +123,7 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  background: #3b82f6;
+  background: #174C7C;
   color: #fff;
   padding: 8px;
   border-radius: 9999px;
@@ -132,7 +132,7 @@
   transition: background 0.2s;
 }
 .settings-avatar-btn:hover {
-  background: #2563eb;
+  background: #0f3a5f;
 }
 .settings-profile-name {
   font-weight: 600;
@@ -173,8 +173,8 @@
   background: #f9fafb;
 }
 .settings-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px #3b82f6;
+  border-color: #174C7C;
+  box-shadow: 0 0 0 2px rgba(23, 76, 124, 0.2);
 }
 .settings-input-icon-wrap {
   position: relative;
@@ -202,7 +202,7 @@
   justify-content: flex-end;
 }
 .settings-save-btn {
-  background: linear-gradient(to right, #3b82f6, #a21caf);
+  background: #174C7C;
   color: #fff;
   padding: 10px 32px;
   border-radius: 8px;
@@ -216,7 +216,7 @@
   transition: background 0.2s;
 }
 .settings-save-btn:hover {
-  background: linear-gradient(to right, #2563eb, #7c3aed);
+  background: #0f3a5f;
 }
 .settings-notification-section {
   margin-bottom: 32px;
@@ -253,7 +253,7 @@
 .settings-switch-row input[type="checkbox"] {
   width: 20px;
   height: 20px;
-  accent-color: #3b82f6;
+  accent-color: #174C7C;
 }
 .settings-privacy-section {
   margin-bottom: 24px;

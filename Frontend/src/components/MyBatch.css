@@ -957,7 +957,7 @@
 
 .mybatch-root {
   padding: 1.5rem;
-  max-width: 90rem;
+  width: 100%;
    
   font-family: sans-serif;
 }
@@ -2017,8 +2017,8 @@
 .mybatch-root {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   padding: 20px;
-  max-width: 1200px;
- margin-left: 250px;
+  width: 100%;
+ box-sizing: border-box;
   color: #333;
 }
 
@@ -3531,10 +3531,18 @@
 /* Batch Details View */
 .mybatch-details {
   background-color: white;
-  padding: 30px;
-  border-radius: 10px;
+  border-radius: 30px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  margin-top: 20px;
+  margin-left: 298px;
+  margin-top: 100px;
+}
+
+/* Video View - Same style as main section */
+.mybatch-video-view {
+  margin-left: 10px;
+  padding: 20px;
+  background-color: #f9fafb;
+  min-height: 100vh;
 }
 
 .mybatch-details-header {
@@ -4017,11 +4025,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin-bottom: 20px;
-  background-color: #f0f4f8;
   border-radius: 12px;
   padding: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: -100px;
 }
 
 .mybatch-tab {
@@ -4040,7 +4047,6 @@
 }
 
 .mybatch-tab:hover {
-  background-color: #e2e8f0;
   color: #334155;
   transform: translateY(-1px);
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
@@ -5613,7 +5619,7 @@
 
 .mybatch-root {
   padding: 1.5rem;
-  max-width: 90rem;
+  width: 100%;
    
   font-family: sans-serif;
 }
@@ -6673,8 +6679,8 @@
 .mybatch-root {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   padding: 20px;
-  max-width: 1200px;
- margin-left: 250px;
+  width: 100%;
+ box-sizing: border-box;
   color: #333;
 }
 
@@ -7268,17 +7274,12 @@
 
 /* All Classes Section */
 .pw-chapter-item {
-  background-color: #fdfefe;
   border: 1px solid #e0e0e0;
-  border-radius: 10px;
   padding: 20px;
   margin-bottom: 20px;
   transition: box-shadow 0.3s ease;
 }
 
-.pw-chapter-item:hover {
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-}
 
 .pw-chapter-title {
   font-size: 1.5em;
@@ -7382,9 +7383,6 @@
   margin-right: auto;
 }
 
-.pw-chapter-item .pw-btn-secondary:hover {
-  background-color: #e67e22;
-}
 
 .pw-chapter-item .pw-btn-primary {
   margin-top: 10px;

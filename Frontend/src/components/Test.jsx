@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Zap, XCircle } from "lucide-react";
+import { Zap, XCircle, FileText } from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import "./Test.css";
 
-// Secure API key from environment variables
-// const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || 'AIzaSyBsYqbyfjbBxDHVY8NeiMi3Tz_fQJsqKQM';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:1000';
 
-// Gemini model setup
-const getGeminiModel = (modelName = "gemini-1.5-flash") => {
-  const genAI = new GoogleGenerativeAI('AIzaSyBEnbGedRZio64eBgi_2EDQLX8kOFOTT4w');
+const getGeminiModel = (modelName = "gemini-2.5-flash") => {
+  const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
   return genAI.getGenerativeModel({ model: modelName });
 };
 
 const Test = () => {
-  // Core form state
   const [showBatchCreation, setShowBatchCreation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -22,45 +20,35 @@ const Test = () => {
   const [newDuration, setNewDuration] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newSyllabusText, setNewSyllabusText] = useState("");
-
-  // State to store all generated test series
   const [allTestSeries, setAllTestSeries] = useState([]);
-
-  // State for current selected test series and active test
   const [selectedTestSeries, setSelectedTestSeries] = useState(null);
   const [activeTest, setActiveTest] = useState(null);
-
-  // Test question navigation and selection state
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [score, setScore] = useState(0);
+  const [testResults, setTestResults] = useState([]);
 
-  // FIXED: Initialize testResults ensuring it is always an array
-  const [testResults, setTestResults] = useState(() => {
-    try {
-      const storedResults = localStorage.getItem("testResults");
-      const parsed = storedResults ? JSON.parse(storedResults) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
-      console.error("Failed to parse test results from localStorage:", error);
-      return [];
-    }
-  });
-
-  // Load allTestSeries from localStorage once on mount
+  // Load test series from backend
   useEffect(() => {
-    const storedTestSeries = localStorage.getItem("allTestSeries");
-    try {
-      const parsedSeries = storedTestSeries ? JSON.parse(storedTestSeries) : [];
-      setAllTestSeries(Array.isArray(parsedSeries) ? parsedSeries : []);
-    } catch (error) {
-      console.error("Error parsing all test series from local storage:", error);
-      setAllTestSeries([]);
-    }
+    fetchTestSeries();
   }, []);
 
-  // Form submission handler for generating new test series via Gemini API
+  const fetchTestSeries = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/test-series/all`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAllTestSeries(data.testSeries);
+      }
+    } catch (error) {
+      console.error('Error fetching test series:', error);
+    }
+  };
+
   const handleBatchFormSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
@@ -120,34 +108,38 @@ Return ONLY strict JSON, no extra text outside JSON.
         throw new Error("Gemini API returned empty response!");
       }
 
-      // Remove any code block markers
       const cleanedResponse = rawText.replace(/``````/g, "").trim();
       const cleanedResponse2 = cleanedResponse.replace(/```json\n?|\n?```/g, '').trim();
       const generatedPlan = JSON.parse(cleanedResponse2);
 
       const newTestSeries = {
-        id: Date.now(),
         ...generatedPlan,
         subject: newSubject,
-        createdAt: new Date().toISOString(),
       };
 
-      setAllTestSeries((prev) => {
-        const updated = [...prev, newTestSeries];
-        localStorage.setItem("allTestSeries", JSON.stringify(updated));
-        return updated;
+      // Save to backend
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/test-series/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newTestSeries)
       });
 
-      alert("Test series generated successfully!");
-
-      // Reset fields
-      setNewTitle("");
-      setNewSubject("");
-      setNewLanguage("English");
-      setNewDuration("");
-      setNewDescription("");
-      setNewSyllabusText("");
-      setShowBatchCreation(false);
+      const data = await response.json();
+      if (data.success) {
+        alert("Test series generated successfully!");
+        fetchTestSeries();
+        setNewTitle("");
+        setNewSubject("");
+        setNewLanguage("English");
+        setNewDuration("");
+        setNewDescription("");
+        setNewSyllabusText("");
+        setShowBatchCreation(false);
+      }
     } catch (error) {
       console.error("Error generating test series:", error.message);
       alert("Failed to generate test series. Please try again.");
@@ -192,8 +184,7 @@ Return ONLY strict JSON, no extra text outside JSON.
     }
   };
 
-  // Go to next question or finish test
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (!showResult) return;
 
     const questionsLength = activeTest.questions.length;
@@ -203,24 +194,36 @@ Return ONLY strict JSON, no extra text outside JSON.
       setSelectedOption(null);
       setShowResult(false);
     } else {
-      // Save test result on finish
+      // Save test result to backend
       const testResult = {
-        testSeriesId: selectedTestSeries.id,
+        testSeriesId: selectedTestSeries._id,
         testName: selectedTestSeries.Testname,
         testTitle: activeTest.title,
         level: activeTest.level,
         score,
         totalQuestions: questionsLength,
-        dateCompleted: new Date().toISOString(),
       };
 
-      setTestResults((prev) => {
-        const updated = [...prev, testResult];
-        localStorage.setItem("testResults", JSON.stringify(updated));
-        return updated;
-      });
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/test-series/result`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(testResult)
+        });
 
-      alert(`Test Completed! Your score: ${score}/${questionsLength}`);
+        const data = await response.json();
+        if (data.success) {
+          alert(`Test Completed! Your score: ${score}/${questionsLength}${data.emailSent ? '\nReport sent to your email!' : ''}`);
+        }
+      } catch (error) {
+        console.error('Error saving test result:', error);
+        alert(`Test Completed! Your score: ${score}/${questionsLength}`);
+      }
+
       setActiveTest(null);
       setScore(0);
       setSelectedOption(null);
@@ -228,8 +231,7 @@ Return ONLY strict JSON, no extra text outside JSON.
     }
   };
 
-  // Skip current question
-  const handleSkipQuestion = () => {
+  const handleSkipQuestion = async () => {
     const questionsLength = activeTest.questions.length;
 
     if (currentQuestionIndex < questionsLength - 1) {
@@ -237,24 +239,36 @@ Return ONLY strict JSON, no extra text outside JSON.
       setSelectedOption(null);
       setShowResult(false);
     } else {
-      // Finish test after skip last question
+      // Save test result to backend
       const testResult = {
-        testSeriesId: selectedTestSeries.id,
+        testSeriesId: selectedTestSeries._id,
         testName: selectedTestSeries.Testname,
         testTitle: activeTest.title,
         level: activeTest.level,
         score,
         totalQuestions: questionsLength,
-        dateCompleted: new Date().toISOString(),
       };
 
-      setTestResults((prev) => {
-        const updated = [...prev, testResult];
-        localStorage.setItem("testResults", JSON.stringify(updated));
-        return updated;
-      });
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/test-series/result`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(testResult)
+        });
 
-      alert(`Test Completed (last question skipped)! Your score: ${score}/${questionsLength}`);
+        const data = await response.json();
+        if (data.success) {
+          alert(`Test Completed! Your score: ${score}/${questionsLength}${data.emailSent ? '\nReport sent to your email!' : ''}`);
+        }
+      } catch (error) {
+        console.error('Error saving test result:', error);
+        alert(`Test Completed! Your score: ${score}/${questionsLength}`);
+      }
+
       setActiveTest(null);
       setScore(0);
       setSelectedOption(null);
@@ -269,81 +283,103 @@ Return ONLY strict JSON, no extra text outside JSON.
     const optionLabels = ["A", "B", "C", "D"];
 
     return (
-      <div className="test-interface-card">
-        <div className="test-info-header">
-          <button className="back-button" onClick={() => setActiveTest(null)}>
-            &larr; Back to Test Selection
-          </button>
-          <div className="test-series-name">{selectedTestSeries.Testname}</div>
-          <div className="test-title">
-            {activeTest.title} - Question {currentQuestionIndex + 1} of {activeTest.questions.length}
+      <div className="pw-modal-overlay">
+        <div className="pw-modal-content" style={{ maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '2px solid #e5e7eb' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: '#174C7C' }}>{activeTest.title} - Question {currentQuestionIndex + 1}/{activeTest.questions.length}</h2>
+            <button onClick={() => setActiveTest(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px', color: '#6b7280' }}>×</button>
           </div>
-        </div>
-
-        <div className="question-text">{currentQuestion.question}</div>
-
-        <div className="options-container">
-          {optionLabels.map((ch) => (
-            <label
-              key={ch}
-              htmlFor={"option-" + ch}
-              className={`option-label ${
-                selectedOption === ch ? "selected" : ""
-              } ${
-                showResult && ch === currentQuestion.correctAnswer ? "correct-answer" : ""
-              } ${
-                showResult && selectedOption === ch && selectedOption !== currentQuestion.correctAnswer ? "wrong-answer" : ""
-              }`}
-            >
-              <input
-                type="radio"
-                name="option"
-                id={"option-" + ch}
-                value={ch}
-                checked={selectedOption === ch}
-                onChange={() => handleOptionSelect(ch)}
-                disabled={showResult}
-              />
-              <span>
-                <b>{ch}.</b> {currentQuestion.options[ch]}
-              </span>
-            </label>
-          ))}
-        </div>
-
-        {showResult && (
-          <div className={`result-feedback ${selectedOption === currentQuestion.correctAnswer ? "correct" : "wrong"}`}>
-            {selectedOption === currentQuestion.correctAnswer ? "Correct Answer!" : (
-              <>
-                Wrong Answer. Correct:{" "}
-                <span className="correct-answer-display">{currentQuestion.correctAnswer}</span>
-              </>
+          
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ marginBottom: '32px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+              <p style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>{currentQuestion.question}</p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {optionLabels.map((ch) => (
+                  <label 
+                    key={ch}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      padding: '12px 16px', 
+                      backgroundColor: selectedOption === ch ? '#dbeafe' : 'white',
+                      border: selectedOption === ch ? '2px solid #174C7C' : '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      cursor: showResult ? 'default' : 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <input 
+                      type="radio" 
+                      name="option" 
+                      id={"option-" + ch}
+                      value={ch} 
+                      checked={selectedOption === ch}
+                      onChange={() => handleOptionSelect(ch)}
+                      disabled={showResult}
+                      style={{ marginRight: '12px', accentColor: '#174C7C' }}
+                    /> 
+                    <span style={{ fontSize: '14px', color: '#374151' }}><b>{ch}.</b> {currentQuestion.options[ch]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            {showResult && (
+              <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: selectedOption === currentQuestion.correctAnswer ? '#d4edda' : '#f8d7da', border: `1px solid ${selectedOption === currentQuestion.correctAnswer ? '#28a745' : '#dc3545'}`, marginBottom: '20px' }}>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: selectedOption === currentQuestion.correctAnswer ? '#155724' : '#721c24' }}>
+                  {selectedOption === currentQuestion.correctAnswer ? "✓ Correct Answer!" : `✗ Wrong Answer. Correct: ${currentQuestion.correctAnswer}`}
+                </p>
+              </div>
             )}
           </div>
-        )}
-
-        <div className="action-buttons-container">
-          <button
-            onClick={handleSkipQuestion}
-            disabled={showResult && currentQuestionIndex === activeTest.questions.length - 1} // disable skip last question after submit
-            className="btn-skip"
-          >
-            Skip
-          </button>
-          <button
-            onClick={handleSubmitAnswer}
-            disabled={selectedOption === null || showResult}
-            className="btn-submit"
-          >
-            Submit
-          </button>
-          <button
-            onClick={handleNextQuestion}
-            disabled={!showResult}
-            className="btn-next"
-          >
-            {currentQuestionIndex === activeTest.questions.length - 1 ? "Finish Test" : "Next"}
-          </button>
+          
+          <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9fafb' }}>
+            <button 
+              onClick={handleSkipQuestion}
+              disabled={showResult}
+              style={{ padding: '10px 20px', backgroundColor: showResult ? '#9ca3af' : '#6c757d', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: showResult ? 'not-allowed' : 'pointer' }}
+            >
+              Skip
+            </button>
+            <div style={{ fontSize: '13px', color: '#6b7280' }}>
+              Question {currentQuestionIndex + 1} of {activeTest.questions.length}
+            </div>
+            {!showResult ? (
+              <button 
+                onClick={handleSubmitAnswer}
+                disabled={selectedOption === null}
+                style={{ 
+                  padding: '10px 24px', 
+                  backgroundColor: selectedOption === null ? '#9ca3af' : '#174C7C', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '8px', 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  cursor: selectedOption === null ? 'not-allowed' : 'pointer' 
+                }}
+              >
+                Submit Answer
+              </button>
+            ) : (
+              <button 
+                onClick={handleNextQuestion}
+                style={{ 
+                  padding: '10px 24px', 
+                  backgroundColor: '#28a745', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '8px', 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  cursor: 'pointer' 
+                }}
+              >
+                {currentQuestionIndex === activeTest.questions.length - 1 ? "Finish Test" : "Next Question"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -354,51 +390,19 @@ Return ONLY strict JSON, no extra text outside JSON.
       {/* Batch Creation Modal */}
       {showBatchCreation && (
         <div className="pw-modal-overlay">
-          <div className="pw-modal-content">
-            <button className="close-modal-btn" onClick={() => setShowBatchCreation(false)}>
-              <XCircle size={24} />
-            </button>
-            <h2>Create a New Test Series</h2>
-            <form onSubmit={handleBatchFormSubmit} className="pw-batch-form">
-              <input
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Test Series Title (e.g., 'Physics Fundamentals') *"
-                required
-              />
-              <input
-                value={newSubject}
-                onChange={(e) => setNewSubject(e.target.value)}
-                placeholder="Subject (e.g., 'Physics') *"
-                required
-              />
-              <input
-                value={newLanguage}
-                onChange={(e) => setNewLanguage(e.target.value)}
-                placeholder="Language (e.g., 'English') *"
-                required
-              />
-              <input
-                value={newDuration}
-                onChange={(e) => setNewDuration(e.target.value)}
-                type="number"
-                min="1"
-                placeholder="Duration (hrs, optional)"
-              />
-              <textarea
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Brief Description (e.g., 'Comprehensive tests covering core physics concepts.')"
-              />
-              <textarea
-                value={newSyllabusText}
-                onChange={(e) => setNewSyllabusText(e.target.value)}
-                placeholder="Enter detailed syllabus topics (e.g., 'Newtonian Mechanics, Thermodynamics, Electromagnetism, Quantum Physics')"
-              />
-              <div className="form-actions">
-                <button type="submit" disabled={loading} className="pw-btn pw-btn-primary">
-                  {loading ? "Generating..." : "Generate Test Series"}
-                </button>
+          <div className="pw-modal-content" style={{ maxWidth: '500px', padding: '20px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '16px', color: '#1f2937' }}>Create New Test Series</h2>
+            <form onSubmit={handleBatchFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Test Series Title (e.g., 'Physics Fundamentals') *" required style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }} />
+              <input value={newSubject} onChange={e => setNewSubject(e.target.value)} placeholder="Subject (e.g., 'Physics') *" required style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }} />
+              <input value={newLanguage} onChange={e => setNewLanguage(e.target.value)} placeholder="Language (e.g., 'English') *" required style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }} />
+              <input value={newDuration} onChange={e => setNewDuration(e.target.value)} type="number" min="1" placeholder="Duration (hrs, optional)" style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }} />
+              <textarea value={newDescription} onChange={e => setNewDescription(e.target.value)} placeholder="Brief Description (e.g., 'Comprehensive tests covering core physics concepts.')" rows={3} style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', resize: 'vertical' }}></textarea>
+              <textarea value={newSyllabusText} onChange={e => setNewSyllabusText(e.target.value)} placeholder="Enter detailed syllabus topics (e.g., 'Newtonian Mechanics, Thermodynamics, Electromagnetism, Quantum Physics')" rows={4} style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', resize: 'vertical' }}></textarea>
+              
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button type="button" onClick={() => setShowBatchCreation(false)} disabled={loading} style={{ flex: 1, padding: '10px', background: '#f3f4f6', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={loading} style={{ flex: 1, padding: '10px', background: '#174C7C', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>{loading ? "Generating..." : "Generate Test Series"}</button>
               </div>
             </form>
           </div>
@@ -411,34 +415,41 @@ Return ONLY strict JSON, no extra text outside JSON.
           <h1 className="mybatch-title">My Learning Tests</h1>
           <p className="mybatch-subtitle">Create and manage your AI-powered test series</p>
         </div>
-        <button onClick={() => setShowBatchCreation(true)} className="mybatch-btn mybatch-btn-create">
-          <Zap size={18} /> Generate New AI Test Series
+        <button onClick={() => setShowBatchCreation(true)} style={{ backgroundColor: '#174C7C', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Zap size={16} /> Create Test Series
         </button>
       </div>
 
       {/* Test Series List */}
       {!selectedTestSeries && !activeTest && (
         <>
-          <h2 className="section-heading">Available Test Series</h2>
-          {allTestSeries.length === 0 && (
-            <p className="no-tests-message">No test series generated yet. Click "Generate New AI Test Series" to create one!</p>
-          )}
-          <div className="test-series-grid">
-            {allTestSeries.map((series) => (
-              <div key={series.id} className="test-series-card" onClick={() => handleSelectTestSeries(series)}>
-                <div className="card-icon">
-                  <Zap size={28} color="#0070f3" />
-                </div>
-                <h3 className="card-title">{series.Testname}</h3>
-                <p className="card-description">{series.description}</p>
-                <div className="card-meta">
-                  <span>Subject: {series.subject || "N/A"}</span>
-                  <span>Tests: {series.tests ? series.tests.length : 0}</span>
-                </div>
-                <button className="card-button">Select Test Series &rarr;</button>
+          {allTestSeries.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <FileText size={64} style={{ color: '#9ca3af', margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>No Test Series Yet</h3>
+              <p style={{ fontSize: '14px', color: '#6b7280' }}>Create your first AI-powered test series to get started!</p>
+            </div>
+          ) : (
+            <>
+              <h2 className="section-heading">Available Test Series</h2>
+              <div className="test-series-grid">
+                {allTestSeries.map((series) => (
+                  <div key={series._id} className="test-series-card" onClick={() => handleSelectTestSeries(series)}>
+                    <div className="card-icon">
+                      <Zap size={28} color="#0070f3" />
+                    </div>
+                    <h3 className="card-title">{series.Testname}</h3>
+                    <p className="card-description">{series.description}</p>
+                    <div className="card-meta">
+                      <span>Subject: {series.subject || "N/A"}</span>
+                      <span>Tests: {series.tests ? series.tests.length : 0}</span>
+                    </div>
+                    <button className="card-button">Select Test Series &rarr;</button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </>
       )}
 
@@ -448,14 +459,26 @@ Return ONLY strict JSON, no extra text outside JSON.
           <button className="back-button" onClick={() => setSelectedTestSeries(null)}>
             &larr; Back to All Test Series
           </button>
-          <h2 className="section-heading">{selectedTestSeries.Testname}</h2>
-          <p className="section-description">{selectedTestSeries.description}</p>
-          <h3 className="sub-section-heading">Choose a Test to Start</h3>
-          <div className="test-level-buttons">
+          
+          <div className="test-series-header">
+            <h2 className="test-series-title">{selectedTestSeries.Testname}</h2>
+            <p className="test-series-description">{selectedTestSeries.description}</p>
+            <div className="test-series-meta">
+              <span><strong>Subject:</strong> {selectedTestSeries.subject || 'N/A'}</span>
+              <span><strong>Tests:</strong> {selectedTestSeries.tests?.length || 0}</span>
+            </div>
+          </div>
+
+          <h3 className="choose-test-heading">Choose a Test to Start</h3>
+          <div className="test-list">
             {selectedTestSeries.tests && selectedTestSeries.tests.map((test, idx) => (
-              <button key={idx} onClick={() => handleStartTest(idx)} className="test-level-btn">
-                {test.title} ({test.questions.length} Questions)
-              </button>
+              <div key={idx} className="test-item" onClick={() => handleStartTest(idx)}>
+                <div className="test-item-content">
+                  <h4 className="test-item-title">{test.title}</h4>
+                  <span className="test-item-questions">({test.questions.length} Questions)</span>
+                </div>
+                <button className="test-start-btn">Start Test →</button>
+              </div>
             ))}
           </div>
         </div>
@@ -463,59 +486,8 @@ Return ONLY strict JSON, no extra text outside JSON.
 
       {/* Active Test Interface */}
       {activeTest && renderTestInterface()}
-
-      {/* Test Results */}
-      <div className="test-results-section">
-        <h2 className="section-heading">Your Test Results</h2>
-        {testResults.length === 0 ? (
-          <p className="no-results-message">No test results yet. Complete a test to see your performance here!</p>
-        ) : (
-          <div className="results-grid">
-            {testResults.map((result, idx) => (
-              <div key={idx} className="result-card">
-                <h3 className="result-card-title">{result.testName} - {result.testTitle}</h3>
-                <p>Score: {result.score} / {result.totalQuestions}</p>
-                <p>Date: {new Date(result.dateCompleted).toLocaleDateString()}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 };
 
 export default Test;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

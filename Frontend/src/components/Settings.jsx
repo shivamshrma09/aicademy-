@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Bell, Shield, Palette, Globe, HelpCircle, LogOut, Camera, Mail, Phone, MapPin, Save, Trophy, Star, Award } from 'lucide-react';
 import './Settings.css';
 import './LanguageStyles.css';
-const Settings = ({ onNavigate }) => {
+
+const Settings = ({ onNavigate, currentUser }) => {
   const [activeTab, setActiveTab] = useState('profile');
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [loading, setLoading] = useState(true);
   
   const languages = [
     { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -18,15 +20,32 @@ const Settings = ({ onNavigate }) => {
   ];
   
   const [profileData, setProfileData] = useState({
-    firstName: 'Rahul',
-    lastName: 'Sharma',
-    email: 'rahul.sharma@email.com',
-    phone: '+91 9876543210',
-    location: 'Mumbai, India',
-    examTarget: 'JEE Main 2024',
-    bio: 'Aspiring engineer preparing for JEE Main 2024. Passionate about physics and mathematics.',
-    avatar: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=150'
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    location: '',
+    examTarget: '',
+    bio: '',
+    avatar: 'https://ik.imagekit.io/qwzhnpeqg/mockround.ai%20imges%20public/candidate.jpg?updatedAt=1767107537991'
   });
+
+  useEffect(() => {
+    if (currentUser) {
+      const nameParts = currentUser.name ? currentUser.name.split(' ') : ['', ''];
+      setProfileData({
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        email: currentUser.email || '',
+        phone: currentUser.phone || '',
+        location: currentUser.location || '',
+        examTarget: currentUser.course || '',
+        bio: currentUser.bio || '',
+        avatar: currentUser.avatar || 'https://ik.imagekit.io/qwzhnpeqg/mockround.ai%20imges%20public/candidate.jpg?updatedAt=1767107537991'
+      });
+      setLoading(false);
+    }
+  }, [currentUser]);
 
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -48,13 +67,14 @@ const Settings = ({ onNavigate }) => {
 
   const tabs = [
     { id: 'profile', name: 'Profile', icon: User },
-    { id: 'notifications', name: 'Notifications', icon: Bell },
-    { id: 'privacy', name: 'Privacy', icon: Shield },
-    { id: 'appearance', name: 'Appearance', icon: Palette },
-    { id: 'language', name: 'Language', icon: Globe },
-    { id: 'achievements', name: 'Achievements', icon: Trophy },
-    { id: 'help', name: 'Help', icon: HelpCircle }
+    { id: 'notifications', name: 'Notifications', icon: Bell }
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
+  };
 
   const handleProfileChange = (field, value) => {
     setProfileData(prev => ({
@@ -106,7 +126,7 @@ const Settings = ({ onNavigate }) => {
             })}
           </nav>
           <div className="settings-signout-wrap">
-            <button className="settings-signout-btn">
+            <button className="settings-signout-btn" onClick={handleLogout}>
               <LogOut size={20} />
               <span>Sign Out</span>
             </button>

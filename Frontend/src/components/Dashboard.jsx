@@ -1,333 +1,200 @@
-import React, { useState, useEffect } from 'react';
-import {
-  TrendingUp,
-  Clock,
-  Target,
-  Award,
-  Play,
-  Trophy,
-  ArrowRight,
-  BookOpen,
-  CheckSquare,
-  Code,
-  BarChart3,
-  Calendar,
-  Flame
-} from 'lucide-react';
-import timeTracker from '../utils/timeTracker';
-import './Dashboard.css';
+import React, { useState, useEffect } from "react";
+import { Line, Bar } from "react-chartjs-2";
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { BookOpen, FileText, Clock, TrendingUp, Award, Target, CheckCircle, Activity, Calendar, Zap } from "lucide-react";
 
-const Dashboard = ({ onNavigate }) => {
-  const [user, setUser] = useState({
-    name: "User",
-    streak: 0,
-    totalPoints: 0,
-    numberOfBatchesCompleted: 0
-  });
-  const [currentTime, setCurrentTime] = useState(0);
-  const [realTimeStats, setRealTimeStats] = useState({
-    studyTime: 0,
-    streak: 0,
-    todayPoints: 0
-  });
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
+
+function Dashboard() {
+  const [data, setData] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/students/user`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Unauthorized or other error');
-      }
-      return response.json();
-    })
-    .then(data => {
-      setUser(data);
-    })
-    .catch(error => {
-      console.error('Error fetching user:', error);
-    });
-
-    // Start time tracking
-    timeTracker.startTracking();
-
-    // Update real-time stats every second
-    const interval = setInterval(() => {
-      const totalTime = timeTracker.getTotalTimeToday();
-      const streak = timeTracker.updateStreak();
-      setCurrentTime(totalTime);
-      setRealTimeStats({
-        studyTime: totalTime,
-        streak: streak,
-        todayPoints: Math.floor(totalTime / 60000) * 10 // 10 points per minute
-      });
-    }, 1000);
-
-    // Cleanup on unmount
-    return () => {
-      clearInterval(interval);
-      timeTracker.stopTracking();
-      timeTracker.updateWeeklyStats();
-    };
+    fetchDashboardData();
   }, []);
 
-  const stats = [
-    {
-      label: 'Total Points',
-      value: user.totalPoints + realTimeStats.todayPoints,
-      icon: Target,
-      color: 'dashboard-stat-blue',
-      change: `+${realTimeStats.todayPoints} today`,
-      trend: 'up',
-    },
-    {
-      label: 'Current Streak',
-      value: `${Math.max(user.streak, realTimeStats.streak)} days`,
-      icon: TrendingUp,
-      color: 'dashboard-stat-orange',
-      change: realTimeStats.streak > user.streak ? 'Updated!' : 'Keep going!',
-      trend: 'up',
-    },
-    {
-      label: 'Batches Completed',
-      value: user.numberOfBatchesCompleted,
-      icon: Award,
-      color: 'dashboard-stat-green',
-      change: '+3 this week',
-      trend: 'up',
-    },
-    {
-      label: 'Study Time Today',
-      value: timeTracker.getFormattedTime(currentTime),
-      icon: Clock,
-      color: 'dashboard-stat-purple',
-      change: 'Live tracking',
-      trend: 'up',
-    },
-  ];
-
-  const recentActivities = [
-    {
-      type: 'study',
-      title: `Studied for ${timeTracker.getFormattedTime(currentTime)} today`,
-      time: 'Live',
-      icon: Clock,
-      color: 'dashboard-activity-blue',
-      bgColor: 'dashboard-activity-bg-blue'
-    },
-    {
-      type: 'points',
-      title: `Earned ${realTimeStats.todayPoints} points today`,
-      time: 'Today',
-      icon: Target,
-      color: 'dashboard-activity-green',
-      bgColor: 'dashboard-activity-bg-green'
-    },
-    {
-      type: 'test',
-      title: 'Scored 90% in Algebra Test',
-      time: 'Yesterday',
-      icon: Trophy,
-      color: 'dashboard-activity-purple',
-      bgColor: 'dashboard-activity-bg-purple'
-    },
-    {
-      type: 'achievement',
-      title: 'Joined IntelliLearn Platform',
-      time: 'Today',
-      icon: Award,
-      color: 'dashboard-activity-yellow',
-      bgColor: 'dashboard-activity-bg-yellow'
-    },
-  ];
-
-
-
-
-
-  // Quick action cards for new features
-  const quickActions = [
-    {
-      title: '💻 LeetCode',
-      description: 'Track LeetCode problem solving',
-      icon: Code,
-      color: 'blue',
-      action: () => onNavigate('leetcode')
-    },
-    {
-      title: '✅ My Tasks',
-      description: 'Manage your daily todo list',
-      icon: CheckSquare,
-      color: 'blue',
-      action: () => onNavigate('todo')
-    },
-    {
-      title: '📊 Analytics',
-      description: 'View your learning progress',
-      icon: BarChart3,
-      color: 'blue',
-      action: () => onNavigate('analytics')
-    },
-    {
-      title: '🔥 Study Streak',
-      description: 'Maintain your daily streak',
-      icon: Flame,
-      color: 'blue',
-      action: () => onNavigate('streak')
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/dashboard/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (result.success) setData(result.stats);
+    } catch (error) {
+      console.error('Error:', error);
     }
-  ];
+  };
 
+  if (!data) return <div style={{ marginLeft: '280px', padding: '20px' }}>Loading...</div>;
 
+  const chartData = {
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [{
+      label: 'Activity',
+      data: data.weeklyActivity,
+      borderColor: '#174C7C',
+      backgroundColor: 'rgba(23, 76, 124, 0.1)',
+      tension: 0.4,
+      fill: true
+    }]
+  };
 
+  const testScoreData = {
+    labels: data.testPerformance.testScores.map((_, i) => `T${i + 1}`),
+    datasets: [{
+      label: 'Score %',
+      data: data.testPerformance.testScores,
+      backgroundColor: '#174C7C'
+    }]
+  };
 
-  const continueLearning = [
-    {
-      id: '111',
-      title: 'Math Batch',
-      chapter: 'Chapter 1',
-      progress: 60,
-      color: 'blue'
-    },
-    {
-      id: '112',
-      title: 'Science Batch',
-      chapter: 'Chapter 2',
-      progress: 80,
-      color: 'green'
-    },
-  ];
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
+      x: { grid: { display: false } }
+    }
+  };
+
+  const StatCard = ({ icon: Icon, title, value, color }) => (
+    <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ backgroundColor: color, padding: '10px', borderRadius: '8px' }}>
+        <Icon size={22} color="white" />
+      </div>
+      <div>
+        <p style={{ margin: 0, color: '#666', fontSize: '0.8em' }}>{title}</p>
+        <h2 style={{ margin: '3px 0 0 0', color: '#174C7C', fontSize: '1.6em', fontWeight: '700' }}>{value}</h2>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="dashboard-root">
-      <div className="dashboard-header">
-        <div className="dashboard-welcome">
-          <h1>Welcome back, {user.name}! 🚀</h1>
-          <p>You're on a <span className="streak-highlight">{Math.max(user.streak, realTimeStats.streak)}-day streak</span>! Keep up the amazing work.</p>
+    <div style={{ marginLeft: '280px', padding: '20px', maxWidth: '1400px' }}>
+      <h1 style={{ fontSize: '2em', color: '#174C7C', marginBottom: '8px', fontWeight: '700' }}>Dashboard</h1>
+      <p style={{ color: '#666', marginBottom: '25px' }}>Welcome back! Here's your complete learning overview</p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '25px' }}>
+        <StatCard icon={BookOpen} title="Total Batches" value={data.overview.totalBatches} color="#174C7C" />
+        <StatCard icon={CheckCircle} title="Completed" value={data.overview.completedBatches} color="#059669" />
+        <StatCard icon={FileText} title="Tests Taken" value={data.overview.totalTests} color="#2563eb" />
+        <StatCard icon={Target} title="Avg Score" value={`${data.overview.avgScore}%`} color="#dc2626" />
+        <StatCard icon={Activity} title="Streak" value={`${data.overview.streak}d`} color="#f59e0b" />
+        <StatCard icon={Award} title="Points" value={data.overview.totalPoints} color="#8b5cf6" />
+        <StatCard icon={Zap} title="Rank" value={`#${data.overview.rank || 'N/A'}`} color="#ec4899" />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px' }}>
+          <h2 style={{ margin: '0 0 12px 0', color: '#174C7C', fontSize: '1.1em', fontWeight: '600' }}>Weekly Activity</h2>
+          <Line data={chartData} options={chartOptions} />
         </div>
-        <div className="dashboard-points-card">
-          <div className="points-main">
-            <Target size={24} />
-            <span>{user.totalPoints + realTimeStats.todayPoints}</span>
-          </div>
-          <div className="points-today">+{realTimeStats.todayPoints} today</div>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px' }}>
+          <h2 style={{ margin: '0 0 12px 0', color: '#174C7C', fontSize: '1.1em', fontWeight: '600' }}>Recent Test Scores</h2>
+          {data.testPerformance.testScores.length > 0 ? <Bar data={testScoreData} options={chartOptions} /> : <p style={{ color: '#666', textAlign: 'center', marginTop: '40px' }}>No tests taken yet</p>}
         </div>
       </div>
 
-      <div className="dashboard-stats-grid">
-        {stats.map((stat, idx) => {
-          const Icon = stat.icon;
-          return (
-            <div key={idx} className={`dashboard-stat-card ${stat.color}`}>
-              <div className="dashboard-stat-icon"><Icon size={32} /></div>
-              <div>
-                <p>{stat.label}</p>
-                <p>{stat.value}</p>
-                <small>{stat.change}</small>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px' }}>
+          <h2 style={{ margin: '0 0 12px 0', color: '#174C7C', fontSize: '1.1em', fontWeight: '600' }}>Recent Batches</h2>
+          {data.recentActivity.recentBatches.length > 0 ? data.recentActivity.recentBatches.map((b, i) => (
+            <div key={i} style={{ padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ color: '#174C7C', fontWeight: '600', fontSize: '0.85em' }}>{b.title}</span>
+                <span style={{ color: '#059669', fontSize: '0.8em', fontWeight: '600' }}>{b.progress}%</span>
+              </div>
+              <div style={{ backgroundColor: '#e0e0e0', height: '3px', borderRadius: '2px' }}>
+                <div style={{ backgroundColor: '#174C7C', height: '100%', width: `${b.progress}%`, borderRadius: '2px' }}></div>
               </div>
             </div>
-          );
-        })}
-      </div>
+          )) : <p style={{ color: '#666', textAlign: 'center', fontSize: '0.85em' }}>No batches yet</p>}
+        </div>
 
-      <div className="dashboard-section">
-        <h2>Recent Activity</h2>
-        {recentActivities.map((activity, idx) => {
-          const Icon = activity.icon;
-          return (
-            <div key={idx} className={`dashboard-activity-row ${activity.bgColor}`}>
-              <Icon size={20} className={activity.color} />
-              <div>
-                <p>{activity.title}</p>
-                <small>{activity.time}</small>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px' }}>
+          <h2 style={{ margin: '0 0 12px 0', color: '#174C7C', fontSize: '1.1em', fontWeight: '600' }}>Recent Tests</h2>
+          {data.recentActivity.recentTests.length > 0 ? data.recentActivity.recentTests.map((t, i) => (
+            <div key={i} style={{ padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                <span style={{ color: '#174C7C', fontWeight: '600', fontSize: '0.85em' }}>{t.testTitle || t.testName}</span>
+                <span style={{ color: t.percentage >= 70 ? '#059669' : '#dc2626', fontWeight: '600', fontSize: '0.85em' }}>{t.percentage}%</span>
               </div>
+              <small style={{ color: '#666', fontSize: '0.75em' }}>{t.score}/{t.totalQuestions} correct</small>
             </div>
-          );
-        })}
+          )) : <p style={{ color: '#666', textAlign: 'center', fontSize: '0.85em' }}>No tests taken yet</p>}
+        </div>
+
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px' }}>
+          <h2 style={{ margin: '0 0 12px 0', color: '#174C7C', fontSize: '1.1em', fontWeight: '600' }}>Recent Resources</h2>
+          {data.recentActivity.recentResources.length > 0 ? data.recentActivity.recentResources.map((r, i) => (
+            <div key={i} style={{ padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '6px' }}>
+              <span style={{ color: '#174C7C', fontWeight: '600', fontSize: '0.85em', display: 'block' }}>{r.heading}</span>
+              <small style={{ color: '#666', fontSize: '0.75em' }}>{new Date(r.createdAt).toLocaleDateString()}</small>
+            </div>
+          )) : <p style={{ color: '#666', textAlign: 'center', fontSize: '0.85em' }}>No resources saved</p>}
+        </div>
       </div>
 
-      <div className="dashboard-main-grid">
-        <div className="dashboard-main-left">
-          <div className="dashboard-section-card">
-            <div className="dashboard-section-header">
-              <h2>Continue Learning</h2>
-              <button
-                onClick={() => onNavigate('my-batch')}
-                className="dashboard-link"
-              >
-                <span>View All</span>
-                <ArrowRight className="dashboard-link-icon" />
-              </button>
-            </div>
-            <div className="dashboard-continue-list">
-              {continueLearning.map((course, index) => (
-                <div key={index} className={`dashboard-continue-card dashboard-continue-${course.color}`}>
-                  <div className="dashboard-continue-row">
-                    <div className="dashboard-continue-main">
-                      <div className="dashboard-continue-main-row">
-                        <div className={`dashboard-continue-icon dashboard-subject-${course.color}`}>
-                          <BookOpen className="dashboard-continue-icon-svg" />
-                        </div>
-                        <div>
-                          <h3>{course.title}</h3>
-                          <p>{course.chapter}</p>
-                        </div>
-                      </div>
-                      <div className="dashboard-continue-progress">
-                        <div className="dashboard-continue-progress-row">
-                          <span>Progress</span>
-                          <span className={`dashboard-continue-progress-value-${course.color}`}>
-                            {course.progress}%
-                          </span>
-                        </div>
-                        <div className={`dashboard-continue-progress-bar-bg dashboard-subject-${course.color}-bg`}>
-                          <div className={`dashboard-continue-progress-bar-fill dashboard-subject-${course.color}`} style={{ width: `${course.progress}%` }}></div>
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => onNavigate('my-batch')}
-                      className={`dashboard-continue-btn dashboard-continue-btn-${course.color}`}
-                    >
-                      <Play className="dashboard-continue-btn-icon" />
-                      <span>Continue</span>
-                    </button>
-                  </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '15px', marginBottom: '15px' }}>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px' }}>
+          <h2 style={{ margin: '0 0 12px 0', color: '#174C7C', fontSize: '1.1em', fontWeight: '600' }}>Active Batches Progress</h2>
+          {data.progress.activeBatches.length > 0 ? data.progress.activeBatches.map((b, i) => (
+            <div key={i} style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <div>
+                  <span style={{ color: '#174C7C', fontWeight: '600', fontSize: '0.9em' }}>{b.title}</span>
+                  <span style={{ color: '#666', fontSize: '0.8em', marginLeft: '8px' }}>({b.completedChapters}/{b.totalChapters} chapters)</span>
                 </div>
-              ))}
+                <span style={{ color: '#059669', fontWeight: '600', fontSize: '0.9em' }}>{b.progress}%</span>
+              </div>
+              <div style={{ backgroundColor: '#e0e0e0', height: '6px', borderRadius: '3px' }}>
+                <div style={{ backgroundColor: '#174C7C', height: '100%', width: `${b.progress}%`, borderRadius: '3px' }}></div>
+              </div>
             </div>
-          </div>
+          )) : <p style={{ color: '#666', textAlign: 'center' }}>No active batches</p>}
         </div>
-        
-        <div className="dashboard-main-right">
-          <div className="dashboard-section-card">
-            <h2>Quick Actions</h2>
-            <div className="quick-actions-grid">
-              {quickActions.map((action, index) => {
-                const Icon = action.icon;
-                return (
-                  <div 
-                    key={index} 
-                    className={`quick-action-card quick-action-${action.color}`}
-                    onClick={action.action}
-                  >
-                    <Icon className="quick-action-icon" />
-                    <h3>{action.title}</h3>
-                    <p>{action.description}</p>
-                  </div>
-                );
-              })}
+
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px' }}>
+          <h2 style={{ margin: '0 0 12px 0', color: '#174C7C', fontSize: '1.1em', fontWeight: '600' }}>Best Subjects</h2>
+          {data.testPerformance.bestSubjects?.length > 0 ? data.testPerformance.bestSubjects.map((s, i) => (
+            <div key={i} style={{ padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '6px', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#174C7C', fontWeight: '600', fontSize: '0.85em' }}>{s.subject}</span>
+              <span style={{ color: '#059669', fontWeight: '600', fontSize: '0.85em' }}>{s.avgScore}%</span>
             </div>
-          </div>
+          )) : <p style={{ color: '#666', textAlign: 'center', fontSize: '0.85em' }}>No data yet</p>}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px', textAlign: 'center' }}>
+          <h3 style={{ margin: '0 0 8px 0', color: '#174C7C', fontSize: '0.9em' }}>Chapters</h3>
+          <p style={{ fontSize: '1.8em', fontWeight: '700', color: '#174C7C', margin: '8px 0' }}>{data.progress.totalChaptersCompleted}/{data.progress.totalChapters}</p>
+          <p style={{ color: '#666', fontSize: '0.75em' }}>Completed</p>
+        </div>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px', textAlign: 'center' }}>
+          <h3 style={{ margin: '0 0 8px 0', color: '#174C7C', fontSize: '0.9em' }}>Study Time</h3>
+          <p style={{ fontSize: '1.8em', fontWeight: '700', color: '#174C7C', margin: '8px 0' }}>{data.recentActivity.studyTimeWeek}m</p>
+          <p style={{ color: '#666', fontSize: '0.75em' }}>This Week</p>
+        </div>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px', textAlign: 'center' }}>
+          <h3 style={{ margin: '0 0 8px 0', color: '#174C7C', fontSize: '0.9em' }}>Resources</h3>
+          <p style={{ fontSize: '1.8em', fontWeight: '700', color: '#174C7C', margin: '8px 0' }}>{data.resources.totalPDFs}</p>
+          <p style={{ color: '#666', fontSize: '0.75em' }}>Saved PDFs</p>
+        </div>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px', textAlign: 'center' }}>
+          <h3 style={{ margin: '0 0 8px 0', color: '#174C7C', fontSize: '0.9em' }}>Library</h3>
+          <p style={{ fontSize: '1.8em', fontWeight: '700', color: '#174C7C', margin: '8px 0' }}>{data.resources.libraryItems}</p>
+          <p style={{ color: '#666', fontSize: '0.75em' }}>Items</p>
+        </div>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '18px', textAlign: 'center' }}>
+          <h3 style={{ margin: '0 0 8px 0', color: '#174C7C', fontSize: '0.9em' }}>Certificates</h3>
+          <p style={{ fontSize: '1.8em', fontWeight: '700', color: '#174C7C', margin: '8px 0' }}>{data.achievements.certificates}</p>
+          <p style={{ color: '#666', fontSize: '0.75em' }}>Earned</p>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default Dashboard;
