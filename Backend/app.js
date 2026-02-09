@@ -32,7 +32,9 @@ app.use(cors({
     'https://intelli-learn-omega.vercel.app',
     'https://intelli-learn-mu.vercel.app',
     'https://intelli-learn-two.vercel.app',
-    'https://intellilearn.vercel.app'
+    'https://intellilearn.vercel.app',
+    'https://aicademy11.vercel.app',
+    'https://aicademy-fofo.onrender.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
