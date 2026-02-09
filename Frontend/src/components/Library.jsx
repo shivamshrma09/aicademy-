@@ -8,9 +8,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // IMPORTANT: NEVER EXPOSE YOUR API KEY DIRECTLY IN CLIENT-SIDE CODE!
 // For a production app, you MUST proxy this through your own backend server.
-// For development, you might use an environment variable (e.g., process.env.REACT_APP_GEMINI_API_KEY)
-// const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY); // Recommended way
-const genAI = new GoogleGenerativeAI("AIzaSyBT9qazHDn2OdwUaAjYFpzbXIsTioc1ovY"); // Using your provided key for demonstration ONLY
+// For development, you might use an environment variable (e.g., import.meta.env.VITE_GOOGLE_API_KEY)
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY);
 
 const Library = () => {
   // State variables for component functionality
