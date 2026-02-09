@@ -1,7 +1,7 @@
 // Authentication utility functions
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:1000';
+const API_URL = import.meta.env.VITE_API_UR;
 
 // Configure axios defaults
 axios.defaults.withCredentials = true;

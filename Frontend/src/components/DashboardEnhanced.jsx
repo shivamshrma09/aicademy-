@@ -6,6 +6,8 @@ import {
 import timeTracker from '../utils/timeTracker';
 import './DashboardEnhanced.css';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const DashboardEnhanced = ({ onNavigate }) => {
   const [user, setUser] = useState({
     name: "User",
@@ -23,7 +25,7 @@ const DashboardEnhanced = ({ onNavigate }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     
-    fetch('http://localhost:1000/students/user', {
+    fetch(`${API_URL}/students/user`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

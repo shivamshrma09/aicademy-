@@ -3,8 +3,8 @@ import { Zap, XCircle, FileText } from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import "./Test.css";
 
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || 'AIzaSyBsYqbyfjbBxDHVY8NeiMi3Tz_fQJsqKQM';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:1000';
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY ;
+const API_URL = import.meta.env.VITE_API_URL;
 
 const getGeminiModel = (modelName = "gemini-2.5-flash") => {
   const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);

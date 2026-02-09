@@ -13,8 +13,9 @@ import SyllabusList from "./SyllabusList";
 import BatchCard from "./BatchCard";
 import MarkdownRenderer from "./MarkdownRenderer";
 
-// API key directly used in component for Gemini integration
-const GOOGLE_API_KEY = "AIzaSyB2jMnBOrkVevGN8DgKWe0E6CQiY2aBdsI";
+// API key from environment variable
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY ;
+const API_URL = import.meta.env.VITE_API_URL;
 
 const getGeminiModel = (modelName = "gemini-2.5-flash") => {
   const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
@@ -489,7 +490,7 @@ const MyBatch = ({ initialTab = 'my-batches', currentUser = {} }) => {
         const token = localStorage.getItem('token');
         if (!token) return;
         
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/batches`, {
+        const res = await fetch(`${API_URL}/api/batches`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -647,7 +648,7 @@ Rules:
       }));
       
       // Save full data to backend
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/batches`, {
+      const response = await fetch(`${API_URL}/api/batches`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1204,7 +1205,7 @@ Provide the assignment in a concise paragraph format.
     
     // Save to backend and send email
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/batches/${selectedBatch.id}/test-results`, {
+      const response = await fetch(`${API_URL}/api/batches/${selectedBatch.id}/test-results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

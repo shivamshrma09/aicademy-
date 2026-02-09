@@ -76,7 +76,7 @@ const SignupPage = ({ onNavigate }) => {
 
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:1000"}/students/send-registration-otp`,
+        `${import.meta.env.VITE_API_URL}/students/send-registration-otp`,
         { email: email.toLowerCase().trim() },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       );
@@ -104,7 +104,7 @@ const SignupPage = ({ onNavigate }) => {
 
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:1000"}/students/register`,
+        `${import.meta.env.VITE_API_URL}/students/register`,
         { name: name.trim(), email: email.toLowerCase().trim(), password, course, otp },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       );
@@ -129,7 +129,7 @@ const SignupPage = ({ onNavigate }) => {
 
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:1000"}/students/send-registration-otp`,
+        `${import.meta.env.VITE_API_URL}/students/send-registration-otp`,
         { email: email.toLowerCase().trim() },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
       );

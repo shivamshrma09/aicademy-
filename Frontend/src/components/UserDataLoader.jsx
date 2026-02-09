@@ -21,7 +21,7 @@ const UserDataLoader = ({ children, onNavigate }) => {
       
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_API_URL || "http://localhost:1000"}/students/user`,
+          `${import.meta.env.VITE_API_URL}/students/user`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,

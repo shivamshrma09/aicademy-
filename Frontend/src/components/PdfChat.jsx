@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Upload, Send, FileText, X, Loader } from 'lucide-react';
 import './PdfChat.css';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const PdfChat = () => {
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfText, setPdfText] = useState('');
@@ -23,7 +25,7 @@ const PdfChat = () => {
       formData.append('pdf', file);
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/pdf-chat/extract`, {
+      const response = await fetch(`${API_URL}/api/pdf-chat/extract`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -80,7 +82,7 @@ const PdfChat = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/pdf-chat/chat`, {
+      const response = await fetch(`${API_URL}/api/pdf-chat/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

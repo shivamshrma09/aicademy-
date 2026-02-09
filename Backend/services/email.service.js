@@ -135,7 +135,7 @@ const emailService = {
             </div>
             
             <p style="text-align: center;">
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}" class="button">Start Learning Now</a>
+              <a href="${process.env.FRONTEND_URL}" class="button">Start Learning Now</a>
             </p>
             
             <p>If you have any questions, feel free to reach out to our support team.</p>

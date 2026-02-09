@@ -42,7 +42,7 @@ const LoginPage = ({ onNavigate }) => {
 
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:1000"}/students/send-login-otp`,
+        `${import.meta.env.VITE_API_URL}/students/send-login-otp`,
         { 
           email: email.toLowerCase().trim(), 
           password 
@@ -84,7 +84,7 @@ const LoginPage = ({ onNavigate }) => {
 
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:1000"}/students/login`,
+        `${import.meta.env.VITE_API_URL}/students/login`,
         { 
           email: email.toLowerCase().trim(), 
           otp 
@@ -121,7 +121,7 @@ const LoginPage = ({ onNavigate }) => {
 
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:1000"}/students/send-login-otp`,
+        `${import.meta.env.VITE_API_URL}/students/send-login-otp`,
         { email: email.toLowerCase().trim(), password },
         {
           headers: { 'Content-Type': 'application/json' },

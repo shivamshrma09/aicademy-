@@ -16,7 +16,7 @@ function SaveYourResource() {
   const fetchResources = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/resources/all`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/resources/all`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -50,7 +50,7 @@ function SaveYourResource() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/resources/create`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/resources/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,7 +78,7 @@ function SaveYourResource() {
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/resources/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/resources/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

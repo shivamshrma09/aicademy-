@@ -15,7 +15,7 @@ function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:1000'}/api/dashboard/stats`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const result = await response.json();

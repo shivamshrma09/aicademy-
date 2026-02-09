@@ -1,30 +1,36 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const pdf = require('pdf-parse');
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || 'AIzaSyBsYqbyfjbBxDHVY8NeiMi3Tz_fQJsqKQM');
+if (!process.env.GOOGLE_API_KEY) {
+  throw new Error('GOOGLE_API_KEY is required in environment variables');
+}
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
 exports.extractPdfText = async (req, res) => {
   try {
-    console.log('PDF extract request received');
-    console.log('File:', req.file ? 'Present' : 'Missing');
-    
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No PDF file uploaded' });
     }
 
-    console.log('File size:', req.file.size);
-    console.log('File mimetype:', req.file.mimetype);
-    console.log('pdf module:', typeof pdf);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    
+    const pdfData = {
+      inlineData: {
+        data: req.file.buffer.toString('base64'),
+        mimeType: 'application/pdf'
+      }
+    };
 
-    const dataBuffer = req.file.buffer;
-    const data = await pdf(dataBuffer);
-
-    console.log('PDF parsed successfully, pages:', data.numpages);
+    const result = await model.generateContent([
+      'Extract all text content from this PDF. Return only the text.',
+      pdfData
+    ]);
+    
+    const text = result.response.text();
 
     res.status(200).json({
       success: true,
-      text: data.text,
-      pages: data.numpages
+      text: text,
+      pages: 'N/A'
     });
   } catch (error) {
     console.error('Error extracting PDF:', error);

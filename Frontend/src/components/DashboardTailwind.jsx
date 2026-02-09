@@ -30,7 +30,7 @@ const DashboardTailwind = ({ onNavigate }) => {
     const token = localStorage.getItem('token');
     
     if (token) {
-      fetch('http://localhost:1000/students/user', {
+      fetch(`${import.meta.env.VITE_API_URL}/students/user`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
